@@ -1,30 +1,30 @@
-name: Weekly Course Fetch
+name: Fetch & Upsert Courses
 
 on:
   schedule:
-    # Every Sunday at 3:00 UTC
-    - cron: "0 3 * * 0"
+    - cron: "0 3 * * 0" # every Sunday at 03:00 UTC
+  workflow_dispatch: # manual trigger
 
 jobs:
-  fetch-and-upsert:
+  fetch:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "18"
 
-      - name: Install Server Dependencies
+      - name: Install Fetcher Dependencies
         working-directory: server
         run: npm ci
 
-      - name: Fetch & Upsert Courses
+      - name: Fetch & Upsert to Supabase
         working-directory: server
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           WATERLOO_API_KEY: ${{ secrets.WATERLOO_API_KEY }}
-        run: node fetchCourses.js
+        run: npm run fetch
