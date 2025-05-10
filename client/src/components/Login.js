@@ -37,7 +37,7 @@ export default function Login({ onLogin }) {
   };
 
   const bgUrl = `${process.env.PUBLIC_URL}/login-bg.jpg`;
-  const logoUrl = `${process.env.PUBLIC_URL}/uw-logo.svg`;
+  const logoUrl = `${process.env.PUBLIC_URL}/uwlogo.svg`;
 
   return (
     <>
