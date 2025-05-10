@@ -2,9 +2,9 @@ import React, { useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import {
   Box,
+  Paper,
   Typography,
   Button,
-  Paper,
   Divider
 } from '@mui/material';
 import {
@@ -12,17 +12,15 @@ import {
   GitHub as GitHubIcon
 } from '@mui/icons-material';
 
+const GITHUB_PAGES_URL = 'https://ezrasong.github.io/UW-Course-Planner';
+
 export default function Login({ onLogin }) {
-  // Disable page scroll while mounted
   useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // Subscribe to auth state
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) onLogin(session.user);
@@ -33,7 +31,7 @@ export default function Login({ onLogin }) {
   const handleLogin = provider => {
     supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: GITHUB_PAGES_URL }
     });
   };
 
@@ -41,7 +39,6 @@ export default function Login({ onLogin }) {
 
   return (
     <>
-      {/* Fixed full-screen background */}
       <Box
         sx={{
           position: 'fixed',
@@ -49,7 +46,6 @@ export default function Login({ onLogin }) {
           backgroundImage: `url(${bgUrl})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
           zIndex: -1
         }}
       />
@@ -62,7 +58,8 @@ export default function Login({ onLogin }) {
           height: '100vh',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          p: 2
         }}
       >
         <Paper
@@ -71,12 +68,13 @@ export default function Login({ onLogin }) {
             width: 360,
             height: 360,
             bgcolor: 'rgba(255,255,255,0.9)',
-            p: 3,
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 3,
             textAlign: 'center',
-            borderRadius: 2,
-            justifyContent: 'center'
+            borderRadius: 2
           }}
         >
           <Typography variant="h5" gutterBottom>
