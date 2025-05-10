@@ -1,35 +1,61 @@
-name: Build & Deploy React App to GitHub Pages
+name: Build & Deploy to GitHub Pages
 
+# On every push to main, rebuild & redeploy
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
+# Give Actions permission to write to repo contents (needed for gh-pages)
+permissions:
+  contents: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      # 1) Check out the repo with full history and credentials
+      - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          # Fetch all history so we can push gh-pages
+          fetch-depth: 0
+          # Make sure the default GITHUB_TOKEN is used and persists
+          persist-credentials: true
 
+      # 2) Install Node and deps, build your client
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
-      - name: Install dependencies
+      - name: Install client dependencies
         working-directory: client
         run: npm ci
 
       - name: Build React app
         working-directory: client
         env:
+          # Inject your Supabase keys from GitHub Secrets
           REACT_APP_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+          REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
+          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+          REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
         run: npm run build
 
+      # 3) Deploy the build/ directory to gh-pages branch
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
+          # This token has write permission because we set permissions.contents: write
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # The branch we want to push to (default is gh-pages)
+          publish_branch: gh-pages
+          # The folder to publish
           publish_dir: ./client/build
+          # Optional: set the commit author
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
