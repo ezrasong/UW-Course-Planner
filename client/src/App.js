@@ -137,7 +137,7 @@ function App() {
             component="img"
             src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
             alt="UW Logo"
-            sx={{ height: 32, mr: 1 }}
+            sx={{ height: 36, mr: 1 }}
           />
           <Button sx={tabSx("catalog")} onClick={() => setView("catalog")}>
             Course Catalog
