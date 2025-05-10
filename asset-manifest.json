@@ -1,0 +1,11 @@
+{
+  "files": {
+    "main.js": "/uw-course-planner/static/js/main.14eaf4fa.js",
+    "static/media/uwlogo.svg": "/uw-course-planner/static/media/uwlogo.fe662f12eddc5714c71c2b6ea6c93001.svg",
+    "index.html": "/uw-course-planner/index.html",
+    "main.14eaf4fa.js.map": "/uw-course-planner/static/js/main.14eaf4fa.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.14eaf4fa.js"
+  ]
+}
