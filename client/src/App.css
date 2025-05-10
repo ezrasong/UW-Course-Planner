@@ -1,0 +1,82 @@
+:root {
+  --toolbar-height: 64px;       /* adjust if your AppBar is a different height */
+  --sidebar-width: 260px;
+  --filters-width: 280px;
+  --gutter: 16px;
+}
+
+/* AppBar navigation buttons */
+.navButtons {
+  display: flex;
+  gap: var(--gutter);
+  margin-left: 8px;
+}
+
+.navButton {
+  min-width: 140px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  text-transform: none;
+  padding: 4px 12px;
+  transition: border-color 0.2s;
+}
+
+.navButton.active {
+  border-color: rgba(255,255,255,0.7);
+}
+
+/* Floating Filters panel */
+.filtersPanel {
+  position: fixed;
+  top: calc(var(--toolbar-height) + var(--gutter));
+  left: var(--gutter);
+  width: var(--filters-width);
+  z-index: 1200; /* just below AppBar */
+}
+
+/* Main content area */
+.mainContent {
+  padding: var(--gutter);
+  margin-top: calc(var(--toolbar-height) + var(--gutter));
+  margin-left: calc(var(--filters-width) + var(--gutter));
+}
+
+/* Course grid */
+.courseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--gutter);
+}
+
+/* Card tweaks */
+.courseCard {
+  display: flex;
+  flex-direction: column;
+  height: 360px;
+  position: relative;
+  box-shadow: 0px 1px 3px rgba(0,0,0,0.2);
+  transition: box-shadow 0.2s;
+}
+
+.courseCard:hover {
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+}
+
+.courseAccent {
+  height: 8px;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: var(--primary-main, #1976d2); /* fallback if theme var not applied */
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .filtersPanel {
+    display: none;
+  }
+  .mainContent {
+    margin-left: 0;
+  }
+}
