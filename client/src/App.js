@@ -32,54 +32,60 @@ function App() {
     [darkMode]
   );
 
+  // 1) Check existing session
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) setUser(data.session.user);
     });
   }, []);
 
-  // Fetch data after login
+  // 2) After login, fetch courses and plan
   useEffect(() => {
     if (!user) return;
+
     supabase
       .from("courses")
       .select("*")
       .then(({ data, error }) => {
-        if (error) console.error(error);
+        if (error) console.error("Fetch courses error:", error);
         else setCourses(data);
       });
+
     supabase
       .from("user_courses")
       .select("*")
       .eq("user_id", user.id)
       .then(({ data, error }) => {
-        if (error) console.error(error);
+        if (error) console.error("Fetch plan error:", error);
         else setPlan(data || []);
       });
   }, [user]);
 
+  // Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setPlan([]);
   };
 
-  if (!user) {
-    return <Login onLogin={setUser} />;
-  }
+  // If not logged in, show login screen
+  if (!user) return <Login onLogin={setUser} />;
 
+  // Helper set of course codes in plan
   const planCodes = new Set(plan.map((c) => c.course_code));
 
+  // Add a course
   const addCourse = (code, term) => {
     supabase
       .from("user_courses")
       .insert({ user_id: user.id, course_code: code, term })
       .then(({ data, error }) => {
-        if (error) console.error(error);
+        if (error) console.error("Add course error:", error);
         else setPlan((prev) => [...prev, data[0]]);
       });
   };
 
+  // Remove a course
   const removeCourse = (code) => {
     supabase
       .from("user_courses")
@@ -87,12 +93,13 @@ function App() {
       .eq("user_id", user.id)
       .eq("course_code", code)
       .then(({ error }) => {
-        if (error) console.error(error);
+        if (error) console.error("Remove course error:", error);
         else
           setPlan((prev) => prev.filter((item) => item.course_code !== code));
       });
   };
 
+  // Toggle complete flag
   const toggleComplete = (code) => {
     const entry = plan.find((item) => item.course_code === code);
     if (!entry) return;
@@ -102,7 +109,7 @@ function App() {
       .eq("user_id", user.id)
       .eq("course_code", code)
       .then(({ data, error }) => {
-        if (error) console.error(error);
+        if (error) console.error("Toggle complete error:", error);
         else
           setPlan((prev) =>
             prev.map((item) => (item.course_code === code ? data[0] : item))
@@ -110,6 +117,7 @@ function App() {
       });
   };
 
+  // Display name
   const displayName =
     user.user_metadata?.full_name ||
     user.email
@@ -120,12 +128,15 @@ function App() {
 
   const tabSx = (viewName) => ({
     textTransform: "none",
-    color: "common.white",
-    borderBottom:
-      view === viewName ? "2px solid white" : "2px solid transparent",
-    borderRadius: 0,
     mr: 2,
+    px: 2,
+    color: view === viewName ? "primary.main" : "common.white",
+    bgcolor: view === viewName ? "common.white" : "transparent",
+    borderRadius: 1,
     fontWeight: view === viewName ? "bold" : "normal",
+    "&:hover": {
+      bgcolor: view === viewName ? "white" : "rgba(255,255,255,0.2)",
+    },
   });
 
   return (
@@ -134,15 +145,14 @@ function App() {
 
       <AppBar position="sticky">
         <Toolbar>
-          {/* UW crest */}
           <Box
             component="img"
-            src={`${process.env.PUBLIC_URL}/uw-crest.png`}
-            alt="UW Crest"
+            src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
+            alt="UW Logo"
             sx={{ height: 32, mr: 1 }}
           />
 
-          {/* Tabs next to logo */}
+          {/* Tabs */}
           <Button sx={tabSx("catalog")} onClick={() => setView("catalog")}>
             Course Catalog
           </Button>
@@ -150,7 +160,7 @@ function App() {
             Planner
           </Button>
 
-          {/* Push user controls to right */}
+          {/* Spacer */}
           <Box sx={{ flexGrow: 1 }} />
 
           {/* User greeting */}
@@ -164,7 +174,11 @@ function App() {
           </IconButton>
 
           {/* Dark mode toggle */}
-          <IconButton color="inherit" onClick={() => setDarkMode((d) => !d)}>
+          <IconButton
+            color="inherit"
+            onClick={() => setDarkMode((d) => !d)}
+            sx={{ ml: 1 }}
+          >
             {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
         </Toolbar>
@@ -193,5 +207,3 @@ function App() {
     </ThemeProvider>
   );
 }
-
-export default App;
