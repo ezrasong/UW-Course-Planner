@@ -1,39 +1,39 @@
-import React, { useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Divider
-} from '@mui/material';
+import React, { useEffect } from "react";
+import { supabase } from "../supabaseClient";
+import { Box, Paper, Typography, Button, Divider } from "@mui/material";
 import {
   Google as GoogleIcon,
-  GitHub as GitHubIcon
-} from '@mui/icons-material';
+  GitHub as GitHubIcon,
+} from "@mui/icons-material";
+
+const GITHUB_PAGES_URL = "https://ezrasong.github.io/UW-Course-Planner";
 
 export default function Login({ onLogin }) {
-  // Disable page scroll while mounted
   useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = prev;
     };
   }, []);
 
-  // Subscribe to auth state
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session?.user) onLogin(session.user);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        onLogin(session.user);
+      }
     });
-    return () => sub.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [onLogin]);
 
-  const handleLogin = provider => {
+  const handleLogin = (provider) => {
     supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: GITHUB_PAGES_URL },
     });
   };
 
@@ -41,28 +41,24 @@ export default function Login({ onLogin }) {
 
   return (
     <>
-      {/* Fixed full-screen background */}
       <Box
         sx={{
-          position: 'fixed',
+          position: "fixed",
           inset: 0,
-          backgroundImage: `url(${bgUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          zIndex: -1
+          background: `url(${bgUrl}) center/cover no-repeat`,
+          zIndex: -1,
         }}
       />
 
       <Box
         sx={{
-          position: 'relative',
+          position: "relative",
           zIndex: 1,
-          width: '100vw',
-          height: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <Paper
@@ -70,13 +66,13 @@ export default function Login({ onLogin }) {
           sx={{
             width: 360,
             height: 360,
-            bgcolor: 'rgba(255,255,255,0.9)',
+            bgcolor: "rgba(255,255,255,0.9)",
             p: 3,
-            display: 'flex',
-            flexDirection: 'column',
-            textAlign: 'center',
+            display: "flex",
+            flexDirection: "column",
+            textAlign: "center",
             borderRadius: 2,
-            justifyContent: 'center'
+            justifyContent: "center",
           }}
         >
           <Typography variant="h5" gutterBottom>
@@ -91,7 +87,7 @@ export default function Login({ onLogin }) {
             variant="contained"
             startIcon={<GoogleIcon />}
             sx={{ mt: 1 }}
-            onClick={() => handleLogin('google')}
+            onClick={() => handleLogin("google")}
           >
             Sign in with Google
           </Button>
@@ -101,12 +97,12 @@ export default function Login({ onLogin }) {
             variant="outlined"
             startIcon={<GitHubIcon />}
             sx={{ mt: 1 }}
-            onClick={() => handleLogin('github')}
+            onClick={() => handleLogin("github")}
           >
             Sign in with GitHub
           </Button>
 
-          <Divider sx={{ width: '100%', my: 2 }}>or</Divider>
+          <Divider sx={{ width: "100%", my: 2 }}>or</Divider>
 
           <Typography variant="caption" color="text.secondary">
             Use your Google or GitHub account to log in.
