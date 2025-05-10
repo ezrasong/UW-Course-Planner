@@ -1,3 +1,4 @@
+// client/src/App.js
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./supabaseClient";
 import {
@@ -10,6 +11,7 @@ import {
   Button,
   IconButton,
   Box,
+  Container,
 } from "@mui/material";
 import {
   LightMode as LightModeIcon,
@@ -21,6 +23,7 @@ import Planner from "./components/Planner";
 import Login from "./components/Login";
 
 function App() {
+  // --- State ---
   const [user, setUser] = useState(null);
   const [courses, setCourses] = useState([]);
   const [plan, setPlan] = useState([]);
@@ -32,14 +35,14 @@ function App() {
     [darkMode]
   );
 
-  // 1) Check existing session
+  // --- Check existing session on mount ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) setUser(data.session.user);
     });
   }, []);
 
-  // 2) After login, fetch courses and plan
+  // --- After login, fetch courses + plan ---
   useEffect(() => {
     if (!user) return;
 
@@ -61,20 +64,21 @@ function App() {
       });
   }, [user]);
 
-  // Logout
+  // --- Logout handler ---
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setPlan([]);
   };
 
-  // If not logged in, show login screen
-  if (!user) return <Login onLogin={setUser} />;
+  // --- If not logged in, show login page ---
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
 
-  // Helper set of course codes in plan
+  // --- Helpers for catalog/planner ---
   const planCodes = new Set(plan.map((c) => c.course_code));
 
-  // Add a course
   const addCourse = (code, term) => {
     supabase
       .from("user_courses")
@@ -85,7 +89,6 @@ function App() {
       });
   };
 
-  // Remove a course
   const removeCourse = (code) => {
     supabase
       .from("user_courses")
@@ -99,7 +102,6 @@ function App() {
       });
   };
 
-  // Toggle complete flag
   const toggleComplete = (code) => {
     const entry = plan.find((item) => item.course_code === code);
     if (!entry) return;
@@ -117,7 +119,6 @@ function App() {
       });
   };
 
-  // Display name
   const displayName =
     user.user_metadata?.full_name ||
     user.email
@@ -144,48 +145,57 @@ function App() {
       <CssBaseline />
 
       <AppBar position="sticky">
-        <Toolbar>
-          <Box
-            component="img"
-            src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
-            alt="UW Logo"
-            sx={{ height: 32, mr: 1 }}
-          />
+        <Container maxWidth="lg">
+          <Toolbar disableGutters>
+            <Box
+              component="img"
+              src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
+              alt="UW Logo"
+              sx={{ height: 32, mr: 1 }}
+            />
 
-          {/* Tabs */}
-          <Button sx={tabSx("catalog")} onClick={() => setView("catalog")}>
-            Course Catalog
-          </Button>
-          <Button sx={tabSx("planner")} onClick={() => setView("planner")}>
-            Planner
-          </Button>
+            {/* Tabs */}
+            <Button sx={tabSx("catalog")} onClick={() => setView("catalog")}>
+              Course Catalog
+            </Button>
+            <Button sx={tabSx("planner")} onClick={() => setView("planner")}>
+              Planner
+            </Button>
 
-          {/* Spacer */}
-          <Box sx={{ flexGrow: 1 }} />
+            {/* Spacer */}
+            <Box sx={{ flexGrow: 1 }} />
 
-          {/* User greeting */}
-          <Typography sx={{ color: "common.white", mr: 1 }}>
-            Hello, {displayName}
-          </Typography>
+            {/* Hello, Ezra Song */}
+            <Typography sx={{ color: "common.white", mr: 1 }}>
+              Hello, {displayName}
+            </Typography>
 
-          {/* Logout */}
-          <IconButton color="inherit" onClick={handleLogout}>
-            <LogoutIcon />
-          </IconButton>
+            {/* Logout */}
+            <IconButton color="inherit" onClick={handleLogout}>
+              <LogoutIcon />
+            </IconButton>
 
-          {/* Dark mode toggle */}
-          <IconButton
-            color="inherit"
-            onClick={() => setDarkMode((d) => !d)}
-            sx={{ ml: 1 }}
-          >
-            {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Toolbar>
+            {/* Dark mode toggle */}
+            <IconButton
+              color="inherit"
+              onClick={() => setDarkMode((d) => !d)}
+              sx={{ ml: 1 }}
+            >
+              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Toolbar>
+        </Container>
       </AppBar>
 
-      {/* Page content */}
-      <Box sx={{ p: 2, height: "calc(100vh - 64px)", overflow: "auto" }}>
+      {/* PAGE CONTENT */}
+      <Container
+        maxWidth="lg"
+        sx={{
+          py: 2,
+          height: "calc(100vh - 64px)",
+          overflow: "auto",
+        }}
+      >
         {view === "catalog" ? (
           <CourseCatalog
             courses={courses}
@@ -203,7 +213,7 @@ function App() {
             onToggleComplete={toggleComplete}
           />
         )}
-      </Box>
+      </Container>
     </ThemeProvider>
   );
 }
