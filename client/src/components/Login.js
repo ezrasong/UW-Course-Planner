@@ -1,70 +1,54 @@
-import React from 'react';
+// client/src/components/Login.js
+import React from "react";
+import { supabase } from "../supabaseClient";
+import { Button, Box, Typography } from "@mui/material";
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Divider
-} from '@mui/material';
-import GoogleIcon from '@mui/icons-material/Google';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import { auth, googleProvider, githubProvider } from '../firebase';
-import { signInWithPopup } from 'firebase/auth';
+  GitHub as GitHubIcon,
+  Google as GoogleIcon,
+} from "@mui/icons-material";
 
 export default function Login({ onLogin }) {
-  const signIn = (provider) => {
-    signInWithPopup(auth, provider)
-      .then(res => onLogin(res.user))
-      .catch(err => console.error(err));
+  const handleOAuth = async (provider) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) console.error("OAuth error:", error.message);
   };
 
+  // Listen for the auth event on mount
+  React.useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) {
+          onLogin(session.user);
+        }
+      }
+    );
+    return () => listener.unsubscribe();
+  }, [onLogin]);
+
   return (
-    <Box
-      sx={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: 'background.default',
-        p: 2
-      }}
-    >
-      <Card sx={{ maxWidth: 360, width: '100%' }} elevation={6}>
-        <CardContent sx={{ textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom>
-            Waterloo Course Planner
-          </Typography>
-          <Typography variant="subtitle1" gutterBottom>
-            Sign in to continue
-          </Typography>
-
-          <Button
-            variant="contained"
-            fullWidth
-            startIcon={<GoogleIcon />}
-            sx={{ mt: 2, textTransform: 'none' }}
-            onClick={() => signIn(googleProvider)}
-          >
-            Sign in with Google
-          </Button>
-
-          <Button
-            variant="outlined"
-            fullWidth
-            startIcon={<GitHubIcon />}
-            sx={{ mt: 1, textTransform: 'none' }}
-            onClick={() => signIn(githubProvider)}
-          >
-            Sign in with GitHub
-          </Button>
-
-          <Divider sx={{ my: 3 }}>or</Divider>
-          <Typography variant="caption" color="text.secondary">
-            Use your Google or GitHub account to log in.
-          </Typography>
-        </CardContent>
-      </Card>
+    <Box sx={{ textAlign: "center", mt: 10 }}>
+      <Typography variant="h5" gutterBottom>
+        Sign in to continue
+      </Typography>
+      <Button
+        startIcon={<GoogleIcon />}
+        variant="contained"
+        sx={{ mx: 1 }}
+        onClick={() => handleOAuth("google")}
+      >
+        Sign in with Google
+      </Button>
+      <Button
+        startIcon={<GitHubIcon />}
+        variant="contained"
+        sx={{ mx: 1 }}
+        onClick={() => handleOAuth("github")}
+      >
+        Sign in with GitHub
+      </Button>
     </Box>
   );
 }
