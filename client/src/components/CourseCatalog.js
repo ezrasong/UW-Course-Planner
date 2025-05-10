@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import compMathPlan from '../data/comp_math_plan.json';
+import React, { useState, useMemo, useEffect } from "react";
+import compMathPlan from "../data/comp_math_plan.json";
 import {
   Box,
   TextField,
@@ -11,8 +11,6 @@ import {
   OutlinedInput,
   MenuItem,
   Chip,
-  useTheme,
-  useMediaQuery,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -20,102 +18,119 @@ import {
   Button,
   Typography,
   Grid,
-  IconButton
-} from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import debounce from 'lodash.debounce';
-import { Info as InfoIcon, Close as CloseIcon } from '@mui/icons-material';
+  IconButton,
+} from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
+import debounce from "lodash.debounce";
+import { Info as InfoIcon, Close as CloseIcon } from "@mui/icons-material";
 
-const termOptions = ['1A','1B','2A','2B','3A','3B','4A','4B'];
-const relevantSubjects = new Set(['MATH','AMATH','CO','CS','PMATH','STAT']);
+const termOptions = ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"];
+const relevantSubjects = new Set([
+  "MATH",
+  "AMATH",
+  "CO",
+  "CS",
+  "PMATH",
+  "STAT",
+]);
 
 export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
-  const theme = useTheme();
-  const isSm = useMediaQuery(theme.breakpoints.down('sm'));
-
-  // Build sets from comp_math_plan.json
-  const requiredSet = useMemo(() => {
-    const s = new Set();
-    compMathPlan.requirements.forEach(r =>
-      r.options.forEach(code => s.add(code))
-    );
-    return s;
-  }, []);
-
-  // Filter states
-  const [rawSearch, setRawSearch] = useState('');
-  const [search, setSearch] = useState('');
+  // filter & dialog state
+  const [rawSearch, setRawSearch] = useState("");
+  const [search, setSearch] = useState("");
   const [programOnly, setProgramOnly] = useState(false);
   const [requiredOnly, setRequiredOnly] = useState(false);
   const [subjects, setSubjects] = useState([]);
   const [dialogCourse, setDialogCourse] = useState(null);
   const [dialogTerm, setDialogTerm] = useState(termOptions[0]);
 
-  // Debounce the search input
+  // debounce the search input
   const debouncedSetSearch = useMemo(
-    () => debounce(val => setSearch(val), 300),
+    () => debounce((val) => setSearch(val), 300),
     []
   );
   useEffect(() => {
     debouncedSetSearch(rawSearch);
-  }, [rawSearch]);
+  }, [rawSearch, debouncedSetSearch]);
 
-  // Unique subjects for filter
+  // build a Set of required codes from the plan JSON
+  const requiredSet = useMemo(() => {
+    const s = new Set();
+    compMathPlan.requirements.forEach((r) =>
+      r.options.forEach((code) => s.add(code))
+    );
+    return s;
+  }, []);
+
+  // derive unique subject codes for the multi-select filter
   const allSubjects = useMemo(
-    () => Array.from(new Set(courses.map(c => c.subjectCode))).sort(),
+    () => Array.from(new Set(courses.map((c) => c.subjectCode))).sort(),
     [courses]
   );
 
-  // Helpers
-  const isRequired = c => requiredSet.has(c.subjectCode + c.catalogNumber);
-  const isRelevant = c =>
-    isRequired(c) || relevantSubjects.has(c.subjectCode);
-
-  // Filtered & memoized rows
+  // memoized, debounced, and filtered row data for DataGrid
   const rows = useMemo(() => {
     return courses
-      .filter(c => {
-        if (programOnly && !isRelevant(c)) return false;
-        if (requiredOnly && !isRequired(c)) return false;
-        if (subjects.length && !subjects.includes(c.subjectCode)) return false;
+      .filter((c) => {
+        // Program-only toggle
+        if (programOnly) {
+          const key = c.subjectCode + c.catalogNumber;
+          if (!requiredSet.has(key) && !relevantSubjects.has(c.subjectCode)) {
+            return false;
+          }
+        }
+        // Required-only toggle
+        if (requiredOnly) {
+          const key = c.subjectCode + c.catalogNumber;
+          if (!requiredSet.has(key)) {
+            return false;
+          }
+        }
+        // Subject filter
+        if (subjects.length > 0 && !subjects.includes(c.subjectCode)) {
+          return false;
+        }
+        // Search filter
         const q = search.trim().toLowerCase();
         if (q) {
-          const code = `${c.subjectCode} ${c.catalogNumber}`.toLowerCase();
-          if (!code.includes(q) && !c.title.toLowerCase().includes(q)) return false;
+          const codeStr = `${c.subjectCode} ${c.catalogNumber}`.toLowerCase();
+          if (!codeStr.includes(q) && !c.title.toLowerCase().includes(q)) {
+            return false;
+          }
         }
         return true;
       })
-      .map(c => ({
+      .map((c) => ({
         id: c.subjectCode + c.catalogNumber,
         code: `${c.subjectCode} ${c.catalogNumber}`,
         title: c.title,
-        prereq: c.requirementsDescription || 'None',
-        raw: c
+        prereq: c.requirementsDescription || "None",
+        raw: c,
       }));
-  }, [courses, programOnly, requiredOnly, subjects, search]);
+  }, [courses, programOnly, requiredOnly, subjects, search, requiredSet]);
 
-  // DataGrid columns
+  // DataGrid column definitions
   const columns = [
-    { field: 'code', headerName: 'Code', width: 120 },
-    { field: 'title', headerName: 'Title', flex: 1, minWidth: 200 },
-    { field: 'prereq', headerName: 'Prerequisites', flex: 1, minWidth: 200 },
+    { field: "code", headerName: "Code", width: 120 },
+    { field: "title", headerName: "Title", flex: 1, minWidth: 200 },
+    { field: "prereq", headerName: "Prerequisites", flex: 1, minWidth: 200 },
     {
-      field: 'info',
-      headerName: '',
+      field: "info",
+      headerName: "",
       width: 60,
       sortable: false,
-      renderCell: params => (
+      renderCell: (params) => (
         <IconButton size="small" onClick={() => openInfo(params.row.raw)}>
           <InfoIcon />
         </IconButton>
-      )
+      ),
     },
     {
-      field: 'action',
-      headerName: '',
+      field: "action",
+      headerName: "",
       width: 100,
       sortable: false,
-      renderCell: params => {
+      renderCell: (params) => {
         const added = planCodes.has(params.row.id);
         return (
           <Button
@@ -124,19 +139,21 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
             disabled={added}
             onClick={() => openInfo(params.row.raw)}
           >
-            {added ? 'Added' : 'Add'}
+            {added ? "Added" : "Add"}
           </Button>
         );
-      }
-    }
+      },
+    },
   ];
 
-  // Dialog Handlers
-  const openInfo = c => {
-    setDialogCourse(c);
+  // open & close dialog
+  const openInfo = (course) => {
+    setDialogCourse(course);
     setDialogTerm(termOptions[0]);
   };
   const closeInfo = () => setDialogCourse(null);
+
+  // handle adding a course to plan
   const handleAdd = () => {
     onAddCourse(
       dialogCourse.subjectCode + dialogCourse.catalogNumber,
@@ -147,28 +164,23 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
 
   return (
     <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        p: 2
-      }}
+      sx={{ display: "flex", flexDirection: "column", height: "100vh", p: 2 }}
     >
-      {/* Controls */}
+      {/* Filters */}
       <Box
         sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
+          display: "flex",
+          flexWrap: "wrap",
           gap: 2,
           mb: 2,
-          alignItems: 'center'
+          alignItems: "center",
         }}
       >
         <TextField
           label="Search courses"
           size="small"
           value={rawSearch}
-          onChange={e => setRawSearch(e.target.value)}
+          onChange={(e) => setRawSearch(e.target.value)}
           sx={{ minWidth: 200, flexGrow: 1 }}
         />
 
@@ -177,15 +189,17 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
           <Select
             multiple
             value={subjects}
-            onChange={e => setSubjects(e.target.value)}
+            onChange={(e) => setSubjects(e.target.value)}
             input={<OutlinedInput label="Subject" />}
-            renderValue={sel => (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {sel.map(s => <Chip key={s} label={s} size="small" />)}
+            renderValue={(sel) => (
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                {sel.map((s) => (
+                  <Chip key={s} label={s} size="small" />
+                ))}
               </Box>
             )}
           >
-            {allSubjects.map(sub => (
+            {allSubjects.map((sub) => (
               <MenuItem key={sub} value={sub}>
                 <Checkbox checked={subjects.includes(sub)} />
                 <Typography>{sub}</Typography>
@@ -198,7 +212,7 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
           control={
             <Checkbox
               checked={programOnly}
-              onChange={e => setProgramOnly(e.target.checked)}
+              onChange={(e) => setProgramOnly(e.target.checked)}
             />
           }
           label="Program only"
@@ -207,14 +221,14 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
           control={
             <Checkbox
               checked={requiredOnly}
-              onChange={e => setRequiredOnly(e.target.checked)}
+              onChange={(e) => setRequiredOnly(e.target.checked)}
             />
           }
           label="Required only"
         />
       </Box>
 
-      {/* DataGrid */}
+      {/* Virtualized DataGrid */}
       <Box sx={{ flex: 1 }}>
         <DataGrid
           rows={rows}
@@ -226,31 +240,50 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
         />
       </Box>
 
-      {/* Info Dialog */}
+      {/* Course Info Dialog */}
       {dialogCourse && (
         <Dialog open onClose={closeInfo} fullWidth maxWidth="md">
           <DialogTitle>
-            {dialogCourse.subjectCode} {dialogCourse.catalogNumber} — {dialogCourse.title}
-            <IconButton onClick={closeInfo} sx={{ position:'absolute', right:8, top:8 }}>
+            {dialogCourse.subjectCode} {dialogCourse.catalogNumber} —{" "}
+            {dialogCourse.title}
+            <IconButton
+              onClick={closeInfo}
+              sx={{ position: "absolute", right: 8, top: 8 }}
+            >
               <CloseIcon />
             </IconButton>
           </DialogTitle>
           <DialogContent dividers>
-            <Typography variant="subtitle1" gutterBottom>Description</Typography>
+            <Typography variant="subtitle1" gutterBottom>
+              Description
+            </Typography>
             <Typography variant="body2" paragraph>
-              {dialogCourse.description || 'None'}
+              {dialogCourse.description || "None"}
             </Typography>
             <Grid container spacing={2}>
               {[
-                ['Grading Basis', dialogCourse.gradingBasis],
-                ['Component Code', dialogCourse.courseComponentCode],
-                ['Enroll Consent', `${dialogCourse.enrollConsentCode||'—'} ${dialogCourse.enrollConsentDescription||''}`.trim()],
-                ['Drop Consent', `${dialogCourse.dropConsentCode||'—'} ${dialogCourse.dropConsentDescription||''}`.trim()],
-                ['Prerequisites', dialogCourse.requirementsDescription||'None'],
+                ["Grading Basis", dialogCourse.gradingBasis],
+                ["Component Code", dialogCourse.courseComponentCode],
+                [
+                  "Enroll Consent",
+                  `${dialogCourse.enrollConsentCode || "—"} ${
+                    dialogCourse.enrollConsentDescription || ""
+                  }`.trim(),
+                ],
+                [
+                  "Drop Consent",
+                  `${dialogCourse.dropConsentCode || "—"} ${
+                    dialogCourse.dropConsentDescription || ""
+                  }`.trim(),
+                ],
+                [
+                  "Prerequisites",
+                  dialogCourse.requirementsDescription || "None",
+                ],
               ].map(([label, val]) => (
                 <Grid item xs={12} sm={6} key={label}>
                   <Typography variant="subtitle2">{label}</Typography>
-                  <Typography variant="body2">{val || '—'}</Typography>
+                  <Typography variant="body2">{val || "—"}</Typography>
                 </Grid>
               ))}
             </Grid>
@@ -259,11 +292,13 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
                 select
                 label="Term"
                 value={dialogTerm}
-                onChange={e => setDialogTerm(e.target.value)}
+                onChange={(e) => setDialogTerm(e.target.value)}
                 fullWidth
               >
-                {termOptions.map(t => (
-                  <MenuItem key={t} value={t}>{t}</MenuItem>
+                {termOptions.map((t) => (
+                  <MenuItem key={t} value={t}>
+                    {t}
+                  </MenuItem>
                 ))}
               </TextField>
             </Box>
@@ -273,13 +308,19 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
             <Button
               variant="contained"
               onClick={handleAdd}
-              disabled={planCodes.has(dialogCourse.subjectCode + dialogCourse.catalogNumber)}
+              disabled={planCodes.has(
+                dialogCourse.subjectCode + dialogCourse.catalogNumber
+              )}
             >
-              {planCodes.has(dialogCourse.subjectCode + dialogCourse.catalogNumber) ? 'Added' : 'Add to Plan'}
+              {planCodes.has(
+                dialogCourse.subjectCode + dialogCourse.catalogNumber
+              )
+                ? "Added"
+                : "Add to Plan"}
             </Button>
           </DialogActions>
         </Dialog>
       )}
     </Box>
-);
+  );
 }
