@@ -131,8 +131,8 @@ function App() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 'auto' }}>
             <Box
               component="img"
-              src={`${process.env.PUBLIC_URL}/uw-crest.png`}
-              alt="UW Crest"
+              src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
+              alt="UW Logo"
               sx={{ height: 32 }}
             />
             <Button sx={tabSx('catalog')} onClick={() => setView('catalog')}>
