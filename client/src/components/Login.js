@@ -9,6 +9,7 @@ import {
 const GITHUB_PAGES_URL = "https://ezrasong.github.io/UW-Course-Planner";
 
 export default function Login({ onLogin }) {
+  // Prevent scrolling
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -17,19 +18,17 @@ export default function Login({ onLogin }) {
     };
   }, []);
 
+  // Auth state listener
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        onLogin(session.user);
-      }
+    } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) onLogin(session.user);
     });
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [onLogin]);
 
+  // Kick off OAuth, always redirect back to Pages
   const handleLogin = (provider) => {
     supabase.auth.signInWithOAuth({
       provider,
@@ -38,9 +37,11 @@ export default function Login({ onLogin }) {
   };
 
   const bgUrl = `${process.env.PUBLIC_URL}/login-bg.jpg`;
+  const logoUrl = `${process.env.PUBLIC_URL}/uw-logo.svg`;
 
   return (
     <>
+      {/* Full‐screen background */}
       <Box
         sx={{
           position: "fixed",
@@ -50,6 +51,7 @@ export default function Login({ onLogin }) {
         }}
       />
 
+      {/* Centered square card */}
       <Box
         sx={{
           position: "relative",
@@ -70,11 +72,20 @@ export default function Login({ onLogin }) {
             p: 3,
             display: "flex",
             flexDirection: "column",
+            alignItems: "center",
             textAlign: "center",
             borderRadius: 2,
             justifyContent: "center",
           }}
         >
+          {/* UW Logo */}
+          <Box
+            component="img"
+            src={logoUrl}
+            alt="UW Logo"
+            sx={{ width: 80, mb: 1 }}
+          />
+
           <Typography variant="h5" gutterBottom>
             Waterloo Course Planner
           </Typography>
