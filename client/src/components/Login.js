@@ -9,7 +9,6 @@ import {
 const GITHUB_PAGES_URL = "https://ezrasong.github.io/UW-Course-Planner";
 
 export default function Login({ onLogin }) {
-  // Prevent scrolling
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -18,7 +17,6 @@ export default function Login({ onLogin }) {
     };
   }, []);
 
-  // Auth state listener
   useEffect(() => {
     const {
       data: { subscription },
@@ -28,7 +26,6 @@ export default function Login({ onLogin }) {
     return () => subscription.unsubscribe();
   }, [onLogin]);
 
-  // Kick off OAuth, always redirect back to Pages
   const handleLogin = (provider) => {
     supabase.auth.signInWithOAuth({
       provider,
@@ -41,7 +38,6 @@ export default function Login({ onLogin }) {
 
   return (
     <>
-      {/* Full‐screen background */}
       <Box
         sx={{
           position: "fixed",
@@ -51,7 +47,6 @@ export default function Login({ onLogin }) {
         }}
       />
 
-      {/* Centered square card */}
       <Box
         sx={{
           position: "relative",
@@ -78,7 +73,6 @@ export default function Login({ onLogin }) {
             justifyContent: "center",
           }}
         >
-          {/* UW Logo */}
           <Box
             component="img"
             src={logoUrl}
