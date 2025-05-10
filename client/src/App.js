@@ -40,22 +40,18 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-
     supabase
       .from("courses")
       .select("*")
       .then(({ data, error }) => {
-        if (error) console.error(error);
-        else setCourses(data);
+        if (!error) setCourses(data);
       });
-
     supabase
       .from("user_courses")
       .select("*")
       .eq("user_id", user.id)
       .then(({ data, error }) => {
-        if (error) console.error(error);
-        else setPlan(data || []);
+        if (!error) setPlan(data || []);
       });
   }, [user]);
 
@@ -76,10 +72,10 @@ function App() {
       .from("user_courses")
       .insert({ user_id: user.id, course_code: code, term })
       .then(({ data, error }) => {
-        if (error) console.error(error);
-        else setPlan((prev) => [...prev, data[0]]);
+        if (!error) setPlan((prev) => [...prev, data[0]]);
       });
   };
+
   const removeCourse = (code) => {
     supabase
       .from("user_courses")
@@ -87,11 +83,11 @@ function App() {
       .eq("user_id", user.id)
       .eq("course_code", code)
       .then(({ error }) => {
-        if (error) console.error(error);
-        else
+        if (!error)
           setPlan((prev) => prev.filter((item) => item.course_code !== code));
       });
   };
+
   const toggleComplete = (code) => {
     const entry = plan.find((item) => item.course_code === code);
     if (!entry) return;
@@ -101,11 +97,11 @@ function App() {
       .eq("user_id", user.id)
       .eq("course_code", code)
       .then(({ data, error }) => {
-        if (error) console.error(error);
-        else
+        if (!error) {
           setPlan((prev) =>
             prev.map((item) => (item.course_code === code ? data[0] : item))
           );
+        }
       });
   };
 
@@ -120,7 +116,7 @@ function App() {
   const tabSx = (viewName) => ({
     textTransform: "none",
     mr: 2,
-    minWidth: 120,
+    width: "140px",
     whiteSpace: "nowrap",
     px: 2,
     color: view === viewName ? "primary.main" : "common.white",
@@ -128,14 +124,13 @@ function App() {
     borderRadius: 1,
     fontWeight: view === viewName ? "bold" : "normal",
     "&:hover": {
-      bgcolor: view === viewName ? "common.white" : "rgba(255, 255, 255, 0.2)",
+      bgcolor: view === viewName ? "common.white" : "rgba(255,255,255,0.2)",
     },
   });
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
       <AppBar position="sticky">
         <Toolbar>
           <Box
@@ -144,24 +139,19 @@ function App() {
             alt="UW Logo"
             sx={{ height: 32, mr: 1 }}
           />
-
           <Button sx={tabSx("catalog")} onClick={() => setView("catalog")}>
             Course Catalog
           </Button>
           <Button sx={tabSx("planner")} onClick={() => setView("planner")}>
             Planner
           </Button>
-
           <Box sx={{ flexGrow: 1 }} />
-
           <Typography sx={{ color: "common.white", mr: 1 }}>
             Hello, {displayName}
           </Typography>
-
           <IconButton color="inherit" onClick={handleLogout}>
             <LogoutIcon />
           </IconButton>
-
           <IconButton
             color="inherit"
             onClick={() => setDarkMode((d) => !d)}
@@ -171,7 +161,6 @@ function App() {
           </IconButton>
         </Toolbar>
       </AppBar>
-
       <Box sx={{ p: 2, height: "calc(100vh - 64px)", overflow: "auto" }}>
         {view === "catalog" ? (
           <CourseCatalog
