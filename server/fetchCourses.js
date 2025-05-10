@@ -1,11 +1,9 @@
-// server/fetchCourses.js
 const path = require("path");
 require("dotenv").config({
   path: path.resolve(__dirname, "..", ".env"),
 });
-
 const axios = require("axios");
-const fs = require("fs");
+const { createClient } = require("@supabase/supabase-js");
 
 function getCurrentTermCode() {
   const now = new Date();
@@ -19,35 +17,54 @@ function getCurrentTermCode() {
 }
 
 (async () => {
-  // use WATERLOO_API_KEY first, then API_KEY for local dev
-  const key = process.env.WATERLOO_API_KEY || process.env.API_KEY;
-  if (!key) {
-    console.error(
-      "Missing environment variable WATERLOO_API_KEY (or API_KEY for local)."
-    );
+  const WATERLOO_API_KEY = process.env.WATERLOO_API_KEY || process.env.API_KEY;
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!WATERLOO_API_KEY) {
+    console.error("Missing WATERLOO_API_KEY (or API_KEY).");
+    process.exit(1);
+  }
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) {
+    console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
     process.exit(1);
   }
 
   const termCode = getCurrentTermCode();
-  const url = `https://openapi.data.uwaterloo.ca/v3/courses/${termCode}?key=${key}`;
+  const url = `https://openapi.data.uwaterloo.ca/v3/courses/${termCode}?key=${WATERLOO_API_KEY}`;
 
   try {
+    console.log(`Fetching courses for term ${termCode}…`);
     const res = await axios.get(url);
-    const courses = Array.isArray(res.data)
-      ? res.data
-      : Array.isArray(res.data.data)
-      ? res.data.data
-      : [];
+    const courses = Array.isArray(res.data.data) ? res.data.data : [];
 
-    const outPath = path.resolve(__dirname, "..", "data", "courses.json");
-    fs.writeFileSync(outPath, JSON.stringify(courses, null, 2), "utf-8");
-    console.log(`Fetched ${courses.length} courses → wrote data/courses.json`);
+    console.log(`Upserting ${courses.length} courses into Supabase…`);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
+    const toUpsert = courses.map((c) => ({
+      course_id: String(c.courseId),
+      term_code: c.term,
+      subject_code: c.subjectCode,
+      catalog_number: c.catalogNumber,
+      title: c.title,
+      description: c.description || "",
+      requirements_description: c.requirementsDescription || "",
+      grading_basis: c.gradingBasis || "",
+      component_code: c.courseComponentCode || "",
+      enroll_consent_code: c.enrollConsentCode || "",
+      enroll_consent_description: c.enrollConsentDescription || "",
+      drop_consent_code: c.dropConsentCode || "",
+      drop_consent_description: c.dropConsentDescription || "",
+    }));
+
+    const { error } = await supabase
+      .from("courses")
+      .upsert(toUpsert, { onConflict: ["course_id", "term_code"] });
+
+    if (error) throw error;
+    console.log("Done upserting courses.");
   } catch (err) {
-    console.error(
-      "Error fetching course data:",
-      err.response?.status,
-      err.message
-    );
+    console.error("Error fetching or upserting courses:", err.message || err);
     process.exit(1);
   }
 })();
