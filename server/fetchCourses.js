@@ -1,44 +1,53 @@
 // server/fetchCourses.js
-import fetch from "node-fetch";
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const WATERLOO_API_KEY = process.env.WATERLOO_API_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !WATERLOO_API_KEY) {
-  console.error(
-    "Missing one of SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, WATERLOO_API_KEY"
-  );
-  process.exit(1);
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-const API_BASE = "https://api.uwaterloo.ca/v3/courses.json";
-
-async function main() {
-  console.log("Fetching Waterloo courses…");
-  const resp = await fetch(`${API_BASE}?key=${WATERLOO_API_KEY}`);
-  const { data } = await resp.json();
-  const toUpsert = data.map((c) => ({
-    course_id: c.courseId,
-    term_code: c.term,
-    subject_code: c.subjectCode,
-    catalog_number: c.catalogNumber,
-    title: c.title,
-    description: c.description,
-    prerequisites: c.requirementsDescription,
-    grading_basis: c.gradingBasis,
-  }));
-  console.log(`Upserting ${toUpsert.length} courses…`);
-  const { error } = await supabase
-    .from("courses")
-    .upsert(toUpsert, { onConflict: ["course_id", "term_code"] });
-  if (error) throw error;
-  console.log("Done.");
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+const path = require("path");
+require("dotenv").config({
+  path: path.resolve(__dirname, "..", ".env"),
 });
+
+const axios = require("axios");
+const fs = require("fs");
+
+function getCurrentTermCode() {
+  const now = new Date();
+  const yy = now.getFullYear() - 1900;
+  const m = now.getMonth() + 1;
+  let term;
+  if (m >= 1 && m <= 4) term = 1;
+  else if (m >= 5 && m <= 8) term = 5;
+  else term = 9;
+  return `${yy}${term}`;
+}
+
+(async () => {
+  // use WATERLOO_API_KEY first, then API_KEY for local dev
+  const key = process.env.WATERLOO_API_KEY || process.env.API_KEY;
+  if (!key) {
+    console.error(
+      "Missing environment variable WATERLOO_API_KEY (or API_KEY for local)."
+    );
+    process.exit(1);
+  }
+
+  const termCode = getCurrentTermCode();
+  const url = `https://openapi.data.uwaterloo.ca/v3/courses/${termCode}?key=${key}`;
+
+  try {
+    const res = await axios.get(url);
+    const courses = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.data.data)
+      ? res.data.data
+      : [];
+
+    const outPath = path.resolve(__dirname, "..", "data", "courses.json");
+    fs.writeFileSync(outPath, JSON.stringify(courses, null, 2), "utf-8");
+    console.log(`Fetched ${courses.length} courses → wrote data/courses.json`);
+  } catch (err) {
+    console.error(
+      "Error fetching course data:",
+      err.response?.status,
+      err.message
+    );
+    process.exit(1);
+  }
+})();
