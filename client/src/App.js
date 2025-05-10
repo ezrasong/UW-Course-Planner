@@ -129,10 +129,11 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
       <AppBar position="sticky">
         <Toolbar>
-          <Box sx={{ display: "flex", alignItems: "center", mr: "auto" }}>
+          <Box
+            sx={{ display: "flex", alignItems: "center", gap: 3, mr: "auto" }}
+          >
             <Box
               component="img"
               src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
@@ -140,13 +141,13 @@ function App() {
               sx={{ height: 38 }}
             />
             <Button
-              sx={{ ...tabSx("catalog"), ml: 3, width: "160px" }}
+              sx={{ ...tabSx("catalog"), minWidth: 140 }}
               onClick={() => setView("catalog")}
             >
               Course Catalog
             </Button>
             <Button
-              sx={{ ...tabSx("planner"), ml: 1, width: "100px" }}
+              sx={{ ...tabSx("planner"), minWidth: 100 }}
               onClick={() => setView("planner")}
             >
               Planner
@@ -160,14 +161,13 @@ function App() {
           </IconButton>
           <IconButton
             color="inherit"
-            onClick={() => setDarkMode((prev) => !prev)}
+            onClick={() => setDarkMode((d) => !d)}
             sx={{ ml: 1 }}
           >
             {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
         </Toolbar>
       </AppBar>
-
       <Box sx={{ p: 2, height: "calc(100vh - 64px)", overflow: "auto" }}>
         {view === "catalog" ? (
           <CourseCatalog
