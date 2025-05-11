@@ -17,7 +17,7 @@ import {
   Logout as LogoutIcon,
 } from "@mui/icons-material";
 
-import { fetchCoursesFromDb } from "./api/fetchCoursesFromDb";
+import { fetchCourses } from "./api/fetchCourses";
 import CourseCatalog from "./components/CourseCatalog";
 import Planner from "./components/Planner";
 import Login from "./components/Login";
@@ -43,7 +43,7 @@ function App() {
   useEffect(() => {
     if (!user) return;
 
-    fetchCoursesFromDb()
+    fetchCourses()
       .then(setCourses)
       .catch((err) => console.error("Error loading courses:", err));
 
