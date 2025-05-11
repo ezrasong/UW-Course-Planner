@@ -193,6 +193,7 @@ function App() {
             courses={courses}
             planCodes={planCodes}
             onAddCourse={addCourse}
+            onRemoveCourse={removeCourse}
           />
         ) : (
           <Planner

@@ -38,26 +38,21 @@ export default function Planner({
 }) {
   const [search, setSearch] = useState("");
   const [subjects, setSubjects] = useState([]);
-
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCode, setSelectedCode] = useState(null);
 
   const allSubjects = useMemo(() => {
-    const s = new Set();
-    plan.forEach((item) => {
-      const subj = item.course_code.match(/^[A-Za-z]+/)[0];
-      s.add(subj);
-    });
-    return Array.from(s).sort();
+    const setSub = new Set();
+    plan.forEach((item) => setSub.add(item.course_code.match(/^[A-Za-z]+/)[0]));
+    return Array.from(setSub).sort();
   }, [plan]);
 
-  const filteredRows = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return plan.filter((item) => {
       const subj = item.course_code.match(/^[A-Za-z]+/)[0];
-      if (subjects.length > 0 && !subjects.includes(subj)) return false;
+      if (subjects.length && !subjects.includes(subj)) return false;
       if (q) {
         const code = item.course_code.toLowerCase();
         const title = (coursesMap[item.course_code]?.title || "").toLowerCase();
@@ -67,45 +62,43 @@ export default function Planner({
     });
   }, [plan, search, subjects, coursesMap]);
 
-  const sortedRows = useMemo(() => {
-    if (!sortConfig.key) return filteredRows;
-    const sorted = [...filteredRows].sort((a, b) => {
-      let aVal, bVal;
+  const sorted = useMemo(() => {
+    if (!sortConfig.key) return filtered;
+    return [...filtered].sort((a, b) => {
+      let av, bv;
       switch (sortConfig.key) {
         case "code":
-          aVal = a.course_code;
-          bVal = b.course_code;
+          av = a.course_code;
+          bv = b.course_code;
           break;
         case "title":
-          aVal = coursesMap[a.course_code]?.title || "";
-          bVal = coursesMap[b.course_code]?.title || "";
+          av = coursesMap[a.course_code]?.title || "";
+          bv = coursesMap[b.course_code]?.title || "";
           break;
         case "term":
-          aVal = a.term;
-          bVal = b.term;
+          av = a.term;
+          bv = b.term;
           break;
         case "completed":
-          aVal = a.completed ? 1 : 0;
-          bVal = b.completed ? 1 : 0;
+          av = a.completed ? 1 : 0;
+          bv = b.completed ? 1 : 0;
           break;
         default:
-          aVal = "";
-          bVal = "";
+          av = "";
+          bv = "";
       }
-      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+      if (av < bv) return sortConfig.direction === "asc" ? -1 : 1;
+      if (av > bv) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
-    return sorted;
-  }, [filteredRows, sortConfig, coursesMap]);
+  }, [filtered, sortConfig, coursesMap]);
 
   const handleSort = (key) => {
-    setSortConfig((prev) => {
-      if (prev.key === key) {
-        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
-      }
-      return { key, direction: "asc" };
-    });
+    setSortConfig((prev) =>
+      prev.key === key
+        ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    );
   };
 
   const openDialog = (code) => {
@@ -113,10 +106,9 @@ export default function Planner({
     setDialogOpen(true);
   };
   const closeDialog = () => {
-    setDialogOpen(false);
     setSelectedCode(null);
+    setDialogOpen(false);
   };
-
   const selectedCourse = selectedCode ? coursesMap[selectedCode] : {};
 
   return (
@@ -136,9 +128,9 @@ export default function Planner({
             value={subjects}
             onChange={(e) => setSubjects(e.target.value)}
             input={<OutlinedInput label="Subject" />}
-            renderValue={(selected) => (
+            renderValue={(sel) => (
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                {selected.map((s) => (
+                {sel.map((s) => (
                   <Chip key={s} label={s} size="small" />
                 ))}
               </Box>
@@ -146,8 +138,7 @@ export default function Planner({
           >
             {allSubjects.map((s) => (
               <MenuItem key={s} value={s}>
-                <MuiCheckbox checked={subjects.includes(s)} />
-                {s}
+                <MuiCheckbox checked={subjects.includes(s)} /> {s}
               </MenuItem>
             ))}
           </Select>
@@ -158,35 +149,30 @@ export default function Planner({
         <Table size="small">
           <TableHead>
             <TableRow>
-              {["code", "title", "term", "completed", "actions"].map(
-                (header) => (
-                  <TableCell key={header}>
-                    {header !== "actions" ? (
-                      <TableSortLabel
-                        active={sortConfig.key === header}
-                        direction={sortConfig.direction}
-                        onClick={() => handleSort(header)}
-                      >
-                        {header.charAt(0).toUpperCase() + header.slice(1)}
-                      </TableSortLabel>
-                    ) : (
-                      "Action"
-                    )}
-                  </TableCell>
-                )
-              )}
+              {["code", "title", "term", "completed"].map((col) => (
+                <TableCell key={col}>
+                  <TableSortLabel
+                    active={sortConfig.key === col}
+                    direction={sortConfig.direction}
+                    onClick={() => handleSort(col)}
+                  >
+                    {col.charAt(0).toUpperCase() + col.slice(1)}
+                  </TableSortLabel>
+                </TableCell>
+              ))}
               <TableCell>Info</TableCell>
+              <TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedRows.length === 0 ? (
+            {sorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">
                   No rows
                 </TableCell>
               </TableRow>
             ) : (
-              sortedRows.map((item) => {
+              sorted.map((item) => {
                 const code = item.course_code;
                 const course = coursesMap[code] || {};
                 return (
@@ -202,16 +188,16 @@ export default function Planner({
                       />
                     </TableCell>
                     <TableCell>
+                      <IconButton size="small" onClick={() => openDialog(code)}>
+                        <InfoIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                    <TableCell>
                       <IconButton
                         size="small"
                         onClick={() => onRemoveCourse(code)}
                       >
                         <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                    <TableCell>
-                      <IconButton size="small" onClick={() => openDialog(code)}>
-                        <InfoIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
                   </TableRow>
@@ -234,11 +220,9 @@ export default function Planner({
         </DialogTitle>
         <DialogContent dividers>
           {selectedCourse?.description ? (
-            <Typography variant="body2" paragraph>
-              {selectedCourse.description}
-            </Typography>
+            <Typography paragraph>{selectedCourse.description}</Typography>
           ) : (
-            <Typography variant="body2" color="text.secondary">
+            <Typography color="text.secondary">
               No description available.
             </Typography>
           )}
