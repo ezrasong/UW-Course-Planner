@@ -16,6 +16,8 @@ import {
   DarkMode as DarkModeIcon,
   Logout as LogoutIcon,
 } from "@mui/icons-material";
+
+import { fetchCoursesFromDb } from "./api/fetchCoursesFromDb";
 import CourseCatalog from "./components/CourseCatalog";
 import Planner from "./components/Planner";
 import Login from "./components/Login";
@@ -40,18 +42,18 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("courses")
-      .select("*")
-      .then(({ data, error }) => {
-        if (!error) setCourses(data);
-      });
+
+    fetchCoursesFromDb()
+      .then(setCourses)
+      .catch((err) => console.error("Error loading courses:", err));
+
     supabase
       .from("user_courses")
-      .select("*")
+      .select("course_code, term, completed")
       .eq("user_id", user.id)
       .then(({ data, error }) => {
-        if (!error) setPlan(data || []);
+        if (error) console.error("Error loading plan:", error);
+        else setPlan(data || []);
       });
   }, [user]);
 
@@ -65,14 +67,27 @@ function App() {
     return <Login onLogin={setUser} />;
   }
 
-  const planCodes = new Set(plan.map((c) => c.course_code));
+  const planCodes = useMemo(
+    () => new Set(plan.map((entry) => entry.course_code)),
+    [plan]
+  );
+
+  const coursesMap = useMemo(() => {
+    return courses.reduce((map, c) => {
+      const key = c.subjectCode + c.catalogNumber;
+      map[key] = c;
+      return map;
+    }, {});
+  }, [courses]);
 
   const addCourse = (code, term) => {
     supabase
       .from("user_courses")
       .insert({ user_id: user.id, course_code: code, term })
+      .select()
       .then(({ data, error }) => {
-        if (!error) setPlan((prev) => [...prev, data[0]]);
+        if (error) console.error("Add course error:", error);
+        else setPlan((prev) => [...prev, data[0]]);
       });
   };
 
@@ -83,28 +98,31 @@ function App() {
       .eq("user_id", user.id)
       .eq("course_code", code)
       .then(({ error }) => {
-        if (!error)
-          setPlan((prev) => prev.filter((item) => item.course_code !== code));
+        if (error) console.error("Remove course error:", error);
+        else setPlan((prev) => prev.filter((p) => p.course_code !== code));
       });
   };
 
   const toggleComplete = (code) => {
-    const entry = plan.find((item) => item.course_code === code);
+    const entry = plan.find((p) => p.course_code === code);
     if (!entry) return;
     supabase
       .from("user_courses")
       .update({ completed: !entry.completed })
       .eq("user_id", user.id)
       .eq("course_code", code)
+      .select()
       .then(({ data, error }) => {
-        if (!error) {
+        if (error) console.error("Toggle complete error:", error);
+        else {
           setPlan((prev) =>
-            prev.map((item) => (item.course_code === code ? data[0] : item))
+            prev.map((p) => (p.course_code === code ? data[0] : p))
           );
         }
       });
   };
 
+  // derive display name
   const displayName =
     user.user_metadata?.full_name ||
     user.email
@@ -168,6 +186,7 @@ function App() {
           </IconButton>
         </Toolbar>
       </AppBar>
+
       <Box sx={{ p: 2, height: "calc(100vh - 64px)", overflow: "auto" }}>
         {view === "catalog" ? (
           <CourseCatalog
@@ -178,10 +197,7 @@ function App() {
         ) : (
           <Planner
             plan={plan}
-            coursesMap={courses.reduce((m, c) => {
-              m[`${c.subjectCode} ${c.catalogNumber}`] = c;
-              return m;
-            }, {})}
+            coursesMap={coursesMap}
             onRemoveCourse={removeCourse}
             onToggleComplete={toggleComplete}
           />
