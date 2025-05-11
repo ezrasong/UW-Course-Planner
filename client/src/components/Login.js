@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import { Box, Paper, Typography, Button, Divider } from "@mui/material";
+import { Box, Paper, Typography, Button } from "@mui/material";
 import {
   Google as GoogleIcon,
   GitHub as GitHubIcon,
