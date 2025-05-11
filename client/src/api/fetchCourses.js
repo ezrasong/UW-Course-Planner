@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../supabaseClient";
 
 export async function fetchCoursesFromDb() {
   const { data, error } = await supabase
