@@ -45,22 +45,3 @@ After installation, you may need to populate the `courses` table by invoking the
 4. **View details:** Click the ℹ️ info button next to a course to open the details dialog. Read the description and prerequisites, select a term, and click **Add to Plan** to include it in your schedule.  
 5. **Plan courses:** Switch to the **Planner** tab to see your selected courses. Mark them as completed using the checkbox, or remove them using the trash icon. Your plan is saved per user in the Supabase database, so you can revisit it anytime after logging in.
 
-## Technologies Used
-
-- **React** – Frontend framework (bootstrapped with Create React App).  
-- **Material-UI (MUI)** – UI component library for design and theming.  
-- **Supabase** – Backend-as-a-service for database (PostgreSQL) and authentication. Uses Supabase Auth for OAuth and Supabase Edge Functions to fetch and seed course data.  
-- **UW Open Data API** – Official University of Waterloo API providing course data (requires API key).  
-- **TanStack React Query**, **Lodash Debounce**, **React Window**, etc., for data fetching and UI optimizations.
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request on GitHub if you find a bug or want to add a feature. You can help by improving code, adding tests, or enhancing the UI. For major changes, discuss them in an issue first. Ensure your code follows the existing style and that you update this README as needed.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-Ezra Song (maintainer) – [GitHub profile](https://github.com/ezrasong) (open issues or discussions for questions).
