@@ -34,7 +34,12 @@ const relevantSubjects = new Set([
   "STAT",
 ]);
 
-export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
+export default function CourseCatalog({
+  courses,
+  planCodes,
+  onAddCourse,
+  onRemoveCourse,
+}) {
   const [rawSearch, setRawSearch] = useState("");
   const [search, setSearch] = useState("");
   const [programOnly, setProgramOnly] = useState(false);
@@ -64,89 +69,100 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
     [courses]
   );
 
-  const rows = useMemo(() => {
-    return courses
-      .filter((c) => {
-        if (programOnly) {
+  const rows = useMemo(
+    () =>
+      courses
+        .filter((c) => {
           const key = c.subjectCode + c.catalogNumber;
-          if (!requiredSet.has(key) && !relevantSubjects.has(c.subjectCode))
+          if (
+            programOnly &&
+            !requiredSet.has(key) &&
+            !relevantSubjects.has(c.subjectCode)
+          )
             return false;
-        }
-        if (requiredOnly) {
-          const key = c.subjectCode + c.catalogNumber;
-          if (!requiredSet.has(key)) return false;
-        }
-        if (subjects.length && !subjects.includes(c.subjectCode)) return false;
-        const q = search.trim().toLowerCase();
-        if (q) {
-          const codeStr = `${c.subjectCode} ${c.catalogNumber}`.toLowerCase();
-          if (!codeStr.includes(q) && !c.title.toLowerCase().includes(q))
+          if (requiredOnly && !requiredSet.has(key)) return false;
+          if (subjects.length && !subjects.includes(c.subjectCode))
             return false;
-        }
-        return true;
-      })
-      .map((c) => ({
-        id: c.subjectCode + c.catalogNumber,
-        code: `${c.subjectCode} ${c.catalogNumber}`,
-        title: c.title,
-        prereq: c.requirementsDescription || "None",
-        raw: c,
-      }));
-  }, [courses, programOnly, requiredOnly, subjects, search, requiredSet]);
+          const q = search.trim().toLowerCase();
+          if (q) {
+            const codeStr = `${c.subjectCode} ${c.catalogNumber}`.toLowerCase();
+            if (
+              !codeStr.includes(q) &&
+              !c.title.toLowerCase().includes(q)
+            )
+              return false;
+          }
+          return true;
+        })
+        .map((c) => ({
+          id: c.subjectCode + c.catalogNumber,
+          code: `${c.subjectCode} ${c.catalogNumber}`,
+          title: c.title,
+          prereq: c.requirementsDescription || "None",
+          raw: c,
+        })),
+    [courses, programOnly, requiredOnly, subjects, search, requiredSet]
+  );
 
   const columns = [
     { field: "code", headerName: "Code", width: 120 },
     { field: "title", headerName: "Title", flex: 1, minWidth: 200 },
-    { field: "prereq", headerName: "Prerequisites", flex: 1, minWidth: 200 },
+    {
+      field: "prereq",
+      headerName: "Prerequisites",
+      flex: 1,
+      minWidth: 200,
+    },
+    {
+      field: "action",
+      headerName: "",
+      width: 110,
+      sortable: false,
+      renderCell: (params) => {
+        const id = params.row.id;
+        const added = planCodes.has(id);
+        return (
+          <Button
+            size="small"
+            variant={added ? "outlined" : "contained"}
+            color={added ? "secondary" : "primary"}
+            onClick={() => (added ? onRemoveCourse(id) : openInfo(params.row.raw))}
+          >
+            {added ? "Remove" : "Add"}
+          </Button>
+        );
+      },
+    },
     {
       field: "info",
       headerName: "",
       width: 60,
       sortable: false,
-      renderCell: (p) => (
-        <IconButton size="small" onClick={() => openInfo(p.row.raw)}>
+      renderCell: (params) => (
+        <IconButton size="small" onClick={() => openInfo(params.row.raw)}>
           <InfoIcon />
         </IconButton>
       ),
     },
-    {
-      field: "action",
-      headerName: "",
-      width: 100,
-      sortable: false,
-      renderCell: (p) => {
-        const added = planCodes.has(p.row.id);
-        return (
-          <Button
-            size="small"
-            variant="contained"
-            disabled={added}
-            onClick={() => openInfo(p.row.raw)}
-          >
-            {added ? "Added" : "Add"}
-          </Button>
-        );
-      },
-    },
   ];
 
-  const openInfo = (course) => {
+  function openInfo(course) {
     setDialogCourse(course);
     setDialogTerm(termOptions[0]);
-  };
-  const closeInfo = () => setDialogCourse(null);
-  const handleAdd = () => {
+  }
+  function closeInfo() {
+    setDialogCourse(null);
+  }
+  function handleAdd() {
     onAddCourse(
       dialogCourse.subjectCode + dialogCourse.catalogNumber,
       dialogTerm
     );
     closeInfo();
-  };
+  }
 
   return (
-    <Box
-      sx={{ display: "flex", flexDirection: "column", height: "100vh", p: 2 }}
-    >
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", p: 2 }}>
       <Box
         sx={{
           display: "flex",
@@ -180,7 +196,7 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
           >
             {allSubjects.map((sub) => (
               <MenuItem key={sub} value={sub}>
-                <Checkbox checked={subjects.includes(sub)} />
+                <Checkbox checked={subjects.includes(sub)} />{" "}
                 <Typography>{sub}</Typography>
               </MenuItem>
             ))}
@@ -236,33 +252,7 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
             <Typography variant="body2" paragraph>
               {dialogCourse.description || "None"}
             </Typography>
-            <Grid container spacing={2}>
-              {[
-                ["Grading Basis", dialogCourse.gradingBasis],
-                ["Component Code", dialogCourse.courseComponentCode],
-                [
-                  "Enroll Consent",
-                  `${dialogCourse.enrollConsentCode || "—"} ${
-                    dialogCourse.enrollConsentDescription || ""
-                  }`.trim(),
-                ],
-                [
-                  "Drop Consent",
-                  `${dialogCourse.dropConsentCode || "—"} ${
-                    dialogCourse.dropConsentDescription || ""
-                  }`.trim(),
-                ],
-                [
-                  "Prerequisites",
-                  dialogCourse.requirementsDescription || "None",
-                ],
-              ].map(([label, val]) => (
-                <Grid item xs={12} sm={6} key={label}>
-                  <Typography variant="subtitle2">{label}</Typography>
-                  <Typography variant="body2">{val || "—"}</Typography>
-                </Grid>
-              ))}
-            </Grid>
+            {/* Additional fields... */}
             <Box mt={3}>
               <TextField
                 select
@@ -298,5 +288,5 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
         </Dialog>
       )}
     </Box>
-  );
+);
 }

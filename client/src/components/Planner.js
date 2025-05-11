@@ -18,8 +18,17 @@ import {
   TableBody,
   Checkbox,
   IconButton,
+  TableSortLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import InfoIcon from "@mui/icons-material/Info";
+import CloseIcon from "@mui/icons-material/Close";
 
 export default function Planner({
   plan,
@@ -30,24 +39,25 @@ export default function Planner({
   const [search, setSearch] = useState("");
   const [subjects, setSubjects] = useState([]);
 
-  // Derive unique subjects from the plan
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedCode, setSelectedCode] = useState(null);
+
   const allSubjects = useMemo(() => {
     const s = new Set();
     plan.forEach((item) => {
-      // course_code is like "CS115" → extract letters
       const subj = item.course_code.match(/^[A-Za-z]+/)[0];
       s.add(subj);
     });
     return Array.from(s).sort();
   }, [plan]);
 
-  // Filtered plan rows
-  const rows = useMemo(() => {
+  const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return plan.filter((item) => {
       const subj = item.course_code.match(/^[A-Za-z]+/)[0];
       if (subjects.length > 0 && !subjects.includes(subj)) return false;
-
       if (q) {
         const code = item.course_code.toLowerCase();
         const title = (coursesMap[item.course_code]?.title || "").toLowerCase();
@@ -57,9 +67,60 @@ export default function Planner({
     });
   }, [plan, search, subjects, coursesMap]);
 
+  const sortedRows = useMemo(() => {
+    if (!sortConfig.key) return filteredRows;
+    const sorted = [...filteredRows].sort((a, b) => {
+      let aVal, bVal;
+      switch (sortConfig.key) {
+        case "code":
+          aVal = a.course_code;
+          bVal = b.course_code;
+          break;
+        case "title":
+          aVal = coursesMap[a.course_code]?.title || "";
+          bVal = coursesMap[b.course_code]?.title || "";
+          break;
+        case "term":
+          aVal = a.term;
+          bVal = b.term;
+          break;
+        case "completed":
+          aVal = a.completed ? 1 : 0;
+          bVal = b.completed ? 1 : 0;
+          break;
+        default:
+          aVal = "";
+          bVal = "";
+      }
+      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredRows, sortConfig, coursesMap]);
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const openDialog = (code) => {
+    setSelectedCode(code);
+    setDialogOpen(true);
+  };
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setSelectedCode(null);
+  };
+
+  const selectedCourse = selectedCode ? coursesMap[selectedCode] : {};
+
   return (
     <Box>
-      {/* Filters */}
       <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
         <TextField
           label="Search"
@@ -68,7 +129,6 @@ export default function Planner({
           onChange={(e) => setSearch(e.target.value)}
           sx={{ flexGrow: 1, minWidth: 200 }}
         />
-
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel>Subject</InputLabel>
           <Select
@@ -94,27 +154,39 @@ export default function Planner({
         </FormControl>
       </Box>
 
-      {/* Table */}
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Code</TableCell>
-              <TableCell>Title</TableCell>
-              <TableCell>Term</TableCell>
-              <TableCell>Done</TableCell>
-              <TableCell>Action</TableCell>
+              {["code", "title", "term", "completed", "actions"].map(
+                (header) => (
+                  <TableCell key={header}>
+                    {header !== "actions" ? (
+                      <TableSortLabel
+                        active={sortConfig.key === header}
+                        direction={sortConfig.direction}
+                        onClick={() => handleSort(header)}
+                      >
+                        {header.charAt(0).toUpperCase() + header.slice(1)}
+                      </TableSortLabel>
+                    ) : (
+                      "Action"
+                    )}
+                  </TableCell>
+                )
+              )}
+              <TableCell>Info</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.length === 0 ? (
+            {sortedRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   No rows
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((item) => {
+              sortedRows.map((item) => {
                 const code = item.course_code;
                 const course = coursesMap[code] || {};
                 return (
@@ -137,6 +209,11 @@ export default function Planner({
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
+                    <TableCell>
+                      <IconButton size="small" onClick={() => openDialog(code)}>
+                        <InfoIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -144,6 +221,32 @@ export default function Planner({
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
+        <DialogTitle>
+          {selectedCode} — {selectedCourse?.title}
+          <IconButton
+            onClick={closeDialog}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedCourse?.description ? (
+            <Typography variant="body2" paragraph>
+              {selectedCourse.description}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No description available.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
