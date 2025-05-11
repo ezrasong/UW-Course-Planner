@@ -35,7 +35,6 @@ const relevantSubjects = new Set([
 ]);
 
 export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
-  // filter & dialog state
   const [rawSearch, setRawSearch] = useState("");
   const [search, setSearch] = useState("");
   const [programOnly, setProgramOnly] = useState(false);
@@ -44,7 +43,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
   const [dialogCourse, setDialogCourse] = useState(null);
   const [dialogTerm, setDialogTerm] = useState(termOptions[0]);
 
-  // debounce the search input
   const debouncedSetSearch = useMemo(
     () => debounce((val) => setSearch(val), 300),
     []
@@ -53,7 +51,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
     debouncedSetSearch(rawSearch);
   }, [rawSearch, debouncedSetSearch]);
 
-  // build a Set of required codes from the plan JSON
   const requiredSet = useMemo(() => {
     const s = new Set();
     compMathPlan.requirements.forEach((r) =>
@@ -62,41 +59,29 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
     return s;
   }, []);
 
-  // derive unique subject codes for the multi-select filter
   const allSubjects = useMemo(
     () => Array.from(new Set(courses.map((c) => c.subjectCode))).sort(),
     [courses]
   );
 
-  // memoized, debounced, and filtered row data for DataGrid
   const rows = useMemo(() => {
     return courses
       .filter((c) => {
-        // Program-only toggle
         if (programOnly) {
           const key = c.subjectCode + c.catalogNumber;
-          if (!requiredSet.has(key) && !relevantSubjects.has(c.subjectCode)) {
+          if (!requiredSet.has(key) && !relevantSubjects.has(c.subjectCode))
             return false;
-          }
         }
-        // Required-only toggle
         if (requiredOnly) {
           const key = c.subjectCode + c.catalogNumber;
-          if (!requiredSet.has(key)) {
-            return false;
-          }
+          if (!requiredSet.has(key)) return false;
         }
-        // Subject filter
-        if (subjects.length > 0 && !subjects.includes(c.subjectCode)) {
-          return false;
-        }
-        // Search filter
+        if (subjects.length && !subjects.includes(c.subjectCode)) return false;
         const q = search.trim().toLowerCase();
         if (q) {
           const codeStr = `${c.subjectCode} ${c.catalogNumber}`.toLowerCase();
-          if (!codeStr.includes(q) && !c.title.toLowerCase().includes(q)) {
+          if (!codeStr.includes(q) && !c.title.toLowerCase().includes(q))
             return false;
-          }
         }
         return true;
       })
@@ -109,7 +94,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
       }));
   }, [courses, programOnly, requiredOnly, subjects, search, requiredSet]);
 
-  // DataGrid column definitions
   const columns = [
     { field: "code", headerName: "Code", width: 120 },
     { field: "title", headerName: "Title", flex: 1, minWidth: 200 },
@@ -119,8 +103,8 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
       headerName: "",
       width: 60,
       sortable: false,
-      renderCell: (params) => (
-        <IconButton size="small" onClick={() => openInfo(params.row.raw)}>
+      renderCell: (p) => (
+        <IconButton size="small" onClick={() => openInfo(p.row.raw)}>
           <InfoIcon />
         </IconButton>
       ),
@@ -130,14 +114,14 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
       headerName: "",
       width: 100,
       sortable: false,
-      renderCell: (params) => {
-        const added = planCodes.has(params.row.id);
+      renderCell: (p) => {
+        const added = planCodes.has(p.row.id);
         return (
           <Button
             size="small"
             variant="contained"
             disabled={added}
-            onClick={() => openInfo(params.row.raw)}
+            onClick={() => openInfo(p.row.raw)}
           >
             {added ? "Added" : "Add"}
           </Button>
@@ -146,14 +130,11 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
     },
   ];
 
-  // open & close dialog
   const openInfo = (course) => {
     setDialogCourse(course);
     setDialogTerm(termOptions[0]);
   };
   const closeInfo = () => setDialogCourse(null);
-
-  // handle adding a course to plan
   const handleAdd = () => {
     onAddCourse(
       dialogCourse.subjectCode + dialogCourse.catalogNumber,
@@ -166,7 +147,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
     <Box
       sx={{ display: "flex", flexDirection: "column", height: "100vh", p: 2 }}
     >
-      {/* Filters */}
       <Box
         sx={{
           display: "flex",
@@ -183,7 +163,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
           onChange={(e) => setRawSearch(e.target.value)}
           sx={{ minWidth: 200, flexGrow: 1 }}
         />
-
         <FormControl sx={{ minWidth: 180 }} size="small">
           <InputLabel>Subject</InputLabel>
           <Select
@@ -207,7 +186,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
             ))}
           </Select>
         </FormControl>
-
         <FormControlLabel
           control={
             <Checkbox
@@ -228,7 +206,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
         />
       </Box>
 
-      {/* Virtualized DataGrid */}
       <Box sx={{ flex: 1 }}>
         <DataGrid
           rows={rows}
@@ -240,7 +217,6 @@ export default function CourseCatalog({ courses, planCodes, onAddCourse }) {
         />
       </Box>
 
-      {/* Course Info Dialog */}
       {dialogCourse && (
         <Dialog open onClose={closeInfo} fullWidth maxWidth="md">
           <DialogTitle>
