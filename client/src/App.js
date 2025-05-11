@@ -30,9 +30,24 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
 
   const theme = useMemo(
-    () => createTheme({ palette: { mode: darkMode ? "dark" : "light" } }),
+    () =>
+      createTheme({
+        palette: { mode: darkMode ? "dark" : "light" },
+      }),
     [darkMode]
   );
+
+  const planCodes = useMemo(
+    () => new Set(plan.map((entry) => entry.course_code)),
+    [plan]
+  );
+  const coursesMap = useMemo(() => {
+    return courses.reduce((map, c) => {
+      const key = c.subjectCode + c.catalogNumber;
+      map[key] = c;
+      return map;
+    }, {});
+  }, [courses]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -66,19 +81,6 @@ function App() {
   if (!user) {
     return <Login onLogin={setUser} />;
   }
-
-  const planCodes = useMemo(
-    () => new Set(plan.map((entry) => entry.course_code)),
-    [plan]
-  );
-
-  const coursesMap = useMemo(() => {
-    return courses.reduce((map, c) => {
-      const key = c.subjectCode + c.catalogNumber;
-      map[key] = c;
-      return map;
-    }, {});
-  }, [courses]);
 
   const addCourse = (code, term) => {
     supabase
@@ -122,7 +124,6 @@ function App() {
       });
   };
 
-  // derive display name
   const displayName =
     user.user_metadata?.full_name ||
     user.email
@@ -130,7 +131,6 @@ function App() {
       .split(".")
       .map((w) => w[0].toUpperCase() + w.slice(1))
       .join(" ");
-
   const tabSx = (viewName) => ({
     textTransform: "none",
     whiteSpace: "nowrap",
