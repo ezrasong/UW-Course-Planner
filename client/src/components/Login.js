@@ -106,12 +106,6 @@ export default function Login({ onLogin }) {
           >
             Sign in with GitHub
           </Button>
-
-          <Divider sx={{ width: "100%", my: 2 }}>or</Divider>
-
-          <Typography variant="caption" color="text.secondary">
-            Use your Google or GitHub account to log in.
-          </Typography>
         </Paper>
       </Box>
     </>
