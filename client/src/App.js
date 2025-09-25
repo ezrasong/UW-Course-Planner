@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "./supabaseClient";
 import {
   ThemeProvider,
@@ -32,6 +32,7 @@ import CourseCatalog from "./components/CourseCatalog";
 import Planner from "./components/Planner";
 import Login from "./components/Login";
 import InfoHub from "./components/InfoHub";
+import { DEFAULT_PLAN } from "./utils/programPlan";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -43,6 +44,11 @@ function App() {
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [catalogError, setCatalogError] = useState(null);
   const [planError, setPlanError] = useState(null);
+  const [programPlan, setProgramPlan] = useState(null);
+  const [planTemplateLoading, setPlanTemplateLoading] = useState(false);
+  const [planTemplateSaving, setPlanTemplateSaving] = useState(false);
+  const [planTemplateError, setPlanTemplateError] = useState(null);
+  const [planTemplateUpdatedAt, setPlanTemplateUpdatedAt] = useState(null);
 
   const theme = useMemo(() => {
     const baseTheme = createTheme({
@@ -262,10 +268,118 @@ function App() {
       .finally(() => setLoadingPlan(false));
   }, [user]);
 
+  const persistProgramPlan = useCallback(
+    async (nextPlan) => {
+      const targetUserId = user?.id;
+      if (!targetUserId) return;
+
+      setPlanTemplateSaving(true);
+      setPlanTemplateError(null);
+      const payload = {
+        user_id: targetUserId,
+        plan: nextPlan,
+        updated_at: new Date().toISOString(),
+      };
+
+      try {
+        const { data, error } = await supabase
+          .from("user_program_plans")
+          .upsert(payload, { onConflict: "user_id" })
+          .select("plan, updated_at")
+          .single();
+
+        if (error) throw error;
+        if (user?.id !== targetUserId) return;
+
+        setProgramPlan(data?.plan ?? nextPlan);
+        setPlanTemplateUpdatedAt(data?.updated_at ?? payload.updated_at);
+        setPlanTemplateError(null);
+      } catch (err) {
+        console.error("Error saving requirement plan:", err);
+        if (user?.id === targetUserId) {
+          setPlanTemplateError(
+            "We couldn't save your requirement plan. Please try again."
+          );
+        }
+        throw err;
+      } finally {
+        if (user?.id === targetUserId) {
+          setPlanTemplateSaving(false);
+        }
+      }
+    },
+    [user]
+  );
+
+  useEffect(() => {
+    if (!user?.id) {
+      setProgramPlan(null);
+      setPlanTemplateUpdatedAt(null);
+      setPlanTemplateError(null);
+      setPlanTemplateLoading(false);
+      setPlanTemplateSaving(false);
+      return;
+    }
+
+    let isActive = true;
+    setPlanTemplateLoading(true);
+    setPlanTemplateError(null);
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("user_program_plans")
+        .select("plan, updated_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!isActive) return;
+
+      if (error) {
+        console.error("Error loading requirement plan:", error);
+        setPlanTemplateError(
+          "We couldn't load your requirement plan. Try again in a moment."
+        );
+        setProgramPlan(null);
+        setPlanTemplateUpdatedAt(null);
+        return;
+      }
+
+      if (data?.plan) {
+        setProgramPlan(data.plan);
+        setPlanTemplateUpdatedAt(data.updated_at ?? null);
+      } else {
+        try {
+          await persistProgramPlan(DEFAULT_PLAN);
+        } catch (err) {
+          console.error("Error saving default plan:", err);
+        }
+      }
+    })()
+      .catch((err) => {
+        if (!isActive) return;
+        console.error("Error initializing requirement plan:", err);
+        setPlanTemplateError(
+          "We couldn't load your requirement plan. Try again in a moment."
+        );
+      })
+      .finally(() => {
+        if (isActive) setPlanTemplateLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [user, persistProgramPlan]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setPlan([]);
+    setProgramPlan(null);
+    setPlanTemplateUpdatedAt(null);
+    setPlanTemplateError(null);
+    setPlanTemplateLoading(false);
+    setPlanTemplateSaving(false);
   };
 
   if (!user) {
@@ -789,13 +903,19 @@ function App() {
             )}
             <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
               {view === "catalog" ? (
-                <CourseCatalog
-                  courses={courses}
-                  planCodes={planCodes}
-                  onAddCourse={addCourse}
-                  onRemoveCourse={removeCourse}
-                  loading={loadingCourses}
-                />
+              <CourseCatalog
+                courses={courses}
+                planCodes={planCodes}
+                onAddCourse={addCourse}
+                onRemoveCourse={removeCourse}
+                loading={loadingCourses}
+                storedPlan={programPlan}
+                onPlanSave={persistProgramPlan}
+                savingPlan={planTemplateSaving}
+                planSyncError={planTemplateError}
+                planSyncLoading={planTemplateLoading}
+                lastSyncedAt={planTemplateUpdatedAt}
+              />
               ) : view === "planner" ? (
                 <Planner
                   plan={plan}
