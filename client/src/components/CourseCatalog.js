@@ -316,17 +316,18 @@ export default function CourseCatalog({
       <Box
         sx={{
           display: "grid",
-          gap: { xs: 3, lg: 4 },
+          gap: { xs: 2.5, lg: 4 },
           gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" },
+          alignItems: "stretch",
           flex: 1,
           minHeight: 0,
         }}
       >
         <Stack
           component={Paper}
-          spacing={3}
+          spacing={2.5}
           sx={{
-            p: 3,
+            p: { xs: 2.5, md: 3 },
             borderRadius: 3,
             height: "100%",
             position: "relative",
@@ -334,6 +335,8 @@ export default function CourseCatalog({
             backdropFilter: "blur(10px)",
             background: (theme) =>
               alpha(theme.palette.background.paper, 0.85),
+            border: (theme) =>
+              `1px solid ${alpha(theme.palette.divider, 0.4)}`,
           }}
         >
           <Stack spacing={1.5}>
@@ -362,7 +365,7 @@ export default function CourseCatalog({
             />
           </Stack>
 
-          <Divider />
+          <Divider sx={{ opacity: 0.6 }} />
 
           <Stack spacing={1} sx={{ flexGrow: 1, minHeight: 0 }}>
             <Typography variant="subtitle2" color="text.secondary">
@@ -373,7 +376,8 @@ export default function CourseCatalog({
               sx={{
                 borderRadius: 2,
                 overflow: "auto",
-                maxHeight: 220,
+                maxHeight: { xs: 240, md: 280 },
+                pr: 0.5,
               }}
             >
               {requirementProgress.length === 0 ? (
@@ -409,9 +413,9 @@ export default function CourseCatalog({
             </List>
           </Stack>
 
-          <Divider />
+          <Divider sx={{ opacity: 0.6 }} />
 
-          <Stack spacing={2}>
+          <Stack spacing={1.75}>
             <Typography variant="subtitle2" color="text.secondary">
               Catalog filters
             </Typography>
@@ -469,7 +473,7 @@ export default function CourseCatalog({
             </Stack>
           </Stack>
 
-          <Divider />
+          <Divider sx={{ opacity: 0.6 }} />
 
           <Stack spacing={1.5}>
             <Typography variant="subtitle2" color="text.secondary">

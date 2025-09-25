@@ -209,33 +209,49 @@ function App() {
     textTransform: "none",
     whiteSpace: "nowrap",
     px: 2.5,
-    py: 1,
+    py: 1.1,
     borderRadius: 999,
     fontWeight: view === viewName ? 700 : 500,
-    transition: "all 0.2s ease",
+    transition: "all 0.25s ease",
     color: (theme) =>
       view === viewName
         ? theme.palette.primary.main
-        : alpha(theme.palette.common.white, 0.85),
+        : alpha(theme.palette.text.primary, 0.78),
     bgcolor: (theme) =>
       view === viewName
-        ? alpha(theme.palette.common.white, darkMode ? 0.92 : 0.96)
-        : alpha(theme.palette.common.white, 0.12),
+        ? alpha(theme.palette.primary.main, darkMode ? 0.22 : 0.15)
+        : alpha(theme.palette.text.primary, darkMode ? 0.16 : 0.08),
     border: (theme) =>
       `1px solid ${alpha(
-        theme.palette.common.white,
-        view === viewName ? 0.4 : 0.15
+        theme.palette.primary.main,
+        view === viewName ? 0.55 : 0.25
       )}`,
     boxShadow:
       view === viewName
-        ? `0 10px 24px ${alpha("#000", darkMode ? 0.4 : 0.12)}`
-        : "none",
-    backdropFilter: "blur(8px)",
+        ? `0 12px 26px ${alpha(
+            theme.palette.primary.main,
+            darkMode ? 0.45 : 0.25
+          )}`
+        : `inset 0 0 0 1px ${alpha(
+            theme.palette.text.primary,
+            darkMode ? 0.12 : 0.08
+          )}`,
+    backdropFilter: "blur(6px)",
     "&:hover": {
       bgcolor: (theme) =>
         view === viewName
-          ? alpha(theme.palette.common.white, darkMode ? 0.95 : 1)
-          : alpha(theme.palette.common.white, 0.2),
+          ? alpha(theme.palette.primary.main, darkMode ? 0.28 : 0.2)
+          : alpha(theme.palette.text.primary, darkMode ? 0.24 : 0.14),
+      boxShadow:
+        view === viewName
+          ? `0 14px 32px ${alpha(
+              theme.palette.primary.main,
+              darkMode ? 0.5 : 0.32
+            )}`
+          : `inset 0 0 0 1px ${alpha(
+              theme.palette.text.primary,
+              darkMode ? 0.2 : 0.12
+            )}`,
     },
   });
 
@@ -301,32 +317,32 @@ function App() {
           <AppBar
             position="sticky"
             elevation={0}
+            color="transparent"
             sx={{
-              backdropFilter: "blur(12px)",
-              background: (theme) =>
-                `linear-gradient(120deg, ${alpha(
-                  theme.palette.background.paper,
-                  darkMode ? 0.16 : 0.78
-                )}, ${alpha(theme.palette.background.paper, darkMode ? 0.1 : 0.6)})`,
-              borderBottom: (theme) =>
-                `1px solid ${alpha(theme.palette.divider, darkMode ? 0.5 : 0.28)}`,
+              backdropFilter: "blur(14px)",
+              backgroundColor: (theme) =>
+                alpha(theme.palette.background.paper, darkMode ? 0.92 : 0.96),
+              border: (theme) =>
+                `1px solid ${alpha(theme.palette.divider, darkMode ? 0.6 : 0.3)}`,
               boxShadow: (theme) =>
                 `0 18px 40px ${alpha(
                   theme.palette.common.black,
-                  darkMode ? 0.32 : 0.12
+                  darkMode ? 0.45 : 0.12
                 )}`,
               mx: { xs: 0, md: 3 },
               mt: { xs: 0, md: 3 },
-              borderRadius: { xs: 0, md: 99 },
+              borderRadius: { xs: 0, md: 28 },
+              color: (theme) => theme.palette.text.primary,
             }}
           >
-          <Toolbar disableGutters sx={{ minHeight: 72 }}>
+            <Toolbar disableGutters sx={{ minHeight: 72 }}>
             <Container
               maxWidth="xl"
               sx={{
                 display: "flex",
                 alignItems: "center",
                 gap: 2,
+                px: { xs: 2, sm: 3, md: 4 },
               }}
             >
               <Stack
@@ -362,7 +378,18 @@ function App() {
                   </Button>
                 </Stack>
               </Stack>
-              <Stack direction="row" alignItems="center" spacing={1.5}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={{ xs: 1, sm: 1.5 }}
+                sx={{
+                  px: { xs: 0.5, sm: 0 },
+                  py: 0.5,
+                  borderRadius: 999,
+                  bgcolor: (theme) =>
+                    alpha(theme.palette.primary.main, darkMode ? 0.12 : 0.08),
+                }}
+              >
                 <Stack spacing={0} sx={{ textAlign: "right" }}>
                   <Typography
                     variant="subtitle2"
@@ -409,6 +436,7 @@ function App() {
             flex: "1 1 auto",
             display: "flex",
             width: "100%",
+            px: { xs: 2, sm: 3, md: 4 },
           }}
         >
           <Paper
@@ -435,6 +463,8 @@ function App() {
               display: "flex",
               flexDirection: "column",
               gap: 3,
+              maxWidth: 1280,
+              mx: "auto",
               "&::before": {
                 content: '""',
                 position: "absolute",
