@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import compMathPlan from "../data/comp_math_plan.json";
 import {
   Box,
   TextField,
@@ -42,54 +41,9 @@ import {
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
 } from "@mui/icons-material";
+import { DEFAULT_PLAN, normalizePlan } from "../utils/programPlan";
 
 const termOptions = ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"];
-const DEFAULT_SUBJECTS = ["MATH", "AMATH", "CO", "CS", "PMATH", "STAT"];
-const DEFAULT_PLAN_NAME = "Computational Mathematics";
-
-function normalizePlan(rawPlan = {}) {
-  const requirements = Array.isArray(rawPlan.requirements)
-    ? rawPlan.requirements
-        .map((req) => {
-          const description =
-            typeof req?.description === "string" && req.description.trim()
-              ? req.description.trim()
-              : null;
-          const options = Array.isArray(req?.options)
-            ? req.options
-                .map((code) =>
-                  typeof code === "string" && code.trim() ? code.trim() : null
-                )
-                .filter(Boolean)
-            : [];
-          if (!description && options.length === 0) return null;
-          return {
-            description: description || options.join(", "),
-            options,
-          };
-        })
-        .filter(Boolean)
-    : [];
-
-  const relevantSubjects = Array.isArray(rawPlan.relevantSubjects)
-    ? rawPlan.relevantSubjects
-        .map((subj) =>
-          typeof subj === "string" && subj.trim() ? subj.trim().toUpperCase() : null
-        )
-        .filter(Boolean)
-    : [];
-
-  return {
-    name:
-      (typeof rawPlan.name === "string" && rawPlan.name.trim()) ||
-      DEFAULT_PLAN_NAME,
-    relevantSubjects:
-      relevantSubjects.length > 0 ? relevantSubjects : DEFAULT_SUBJECTS,
-    requirements,
-  };
-}
-
-const DEFAULT_PLAN = normalizePlan(compMathPlan);
 
 export default function CourseCatalog({
   courses,
@@ -97,6 +51,12 @@ export default function CourseCatalog({
   onAddCourse,
   onRemoveCourse,
   loading = false,
+  storedPlan,
+  onPlanSave,
+  savingPlan = false,
+  planSyncError = null,
+  planSyncLoading = false,
+  lastSyncedAt = null,
 }) {
   const [rawSearch, setRawSearch] = useState("");
   const [search, setSearch] = useState("");
@@ -105,7 +65,9 @@ export default function CourseCatalog({
   const [subjects, setSubjects] = useState([]);
   const [dialogCourse, setDialogCourse] = useState(null);
   const [dialogTerm, setDialogTerm] = useState(termOptions[0]);
-  const [planData, setPlanData] = useState(DEFAULT_PLAN);
+  const [planData, setPlanData] = useState(() =>
+    storedPlan ? normalizePlan(storedPlan) : DEFAULT_PLAN
+  );
   const [uploadError, setUploadError] = useState(null);
 
   const debouncedSetSearch = useMemo(
@@ -116,6 +78,15 @@ export default function CourseCatalog({
     debouncedSetSearch(rawSearch);
   }, [rawSearch, debouncedSetSearch]);
   useEffect(() => () => debouncedSetSearch.cancel(), [debouncedSetSearch]);
+
+  useEffect(() => {
+    if (planSyncLoading) return;
+    if (storedPlan) {
+      setPlanData(normalizePlan(storedPlan));
+    } else {
+      setPlanData(DEFAULT_PLAN);
+    }
+  }, [storedPlan, planSyncLoading]);
 
   const normalizeCode = (code = "") => code.replace(/\s+/g, "");
 
@@ -136,7 +107,7 @@ export default function CourseCatalog({
   }, [planData]);
 
   const programSubjects = useMemo(
-    () => new Set(planData.relevantSubjects ?? DEFAULT_SUBJECTS),
+    () => new Set(planData.relevantSubjects ?? []),
     [planData]
   );
 
@@ -281,40 +252,54 @@ export default function CourseCatalog({
     },
   ];
 
-  const handlePlanUpload = useCallback((event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handlePlanUpload = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const parsed = JSON.parse(e.target.result);
-        const normalized = normalizePlan({
-          ...parsed,
-          name:
-            parsed?.name || file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
-        });
-        if (!normalized.requirements.length) {
-          throw new Error("Plan must include at least one requirement");
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const normalized = normalizePlan({
+            ...parsed,
+            name:
+              parsed?.name || file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
+          });
+          if (!normalized.requirements.length) {
+            throw new Error("Plan must include at least one requirement");
+          }
+          setPlanData(normalized);
+          setUploadError(null);
+          if (onPlanSave) {
+            await onPlanSave(normalized);
+          }
+        } catch (err) {
+          console.error("Failed to load custom plan", err);
+          setUploadError(
+            "Unable to read or save that file. Make sure it's valid JSON with a requirements array."
+          );
         }
-        setPlanData(normalized);
-        setUploadError(null);
-      } catch (err) {
-        console.error("Failed to load custom plan", err);
-        setUploadError(
-          "Unable to read that file. Make sure it's valid JSON with a requirements array."
-        );
-      }
-    };
-    reader.readAsText(file);
-    // Allow re-uploading the same file by clearing the input value
-    event.target.value = "";
-  }, []);
+      };
+      reader.readAsText(file);
+      // Allow re-uploading the same file by clearing the input value
+      event.target.value = "";
+    },
+    [onPlanSave]
+  );
 
-  const resetPlan = () => {
+  const resetPlan = useCallback(async () => {
     setPlanData(DEFAULT_PLAN);
     setUploadError(null);
-  };
+    if (onPlanSave) {
+      try {
+        await onPlanSave(DEFAULT_PLAN);
+      } catch (err) {
+        console.error("Failed to reset plan", err);
+        setUploadError("We couldn't save the default plan. Please try again.");
+      }
+    }
+  }, [onPlanSave]);
 
   function openInfo(courseOrCode) {
     if (!courseOrCode) return;
@@ -357,21 +342,19 @@ export default function CourseCatalog({
     <Box sx={{ display: "flex", flexDirection: "column", flex: 1, gap: 3 }}>
       <Box
         sx={{
-          display: "grid",
-          gap: { xs: 2.5, lg: 4 },
-          gridTemplateColumns: { xs: "1fr", lg: "320px 1fr" },
+          mt: 0,
+          display: "flex",
+          flexDirection: { xs: "column", lg: "row" },
           alignItems: "stretch",
+          gap: { xs: 2.5, lg: 4 },
           flex: 1,
           minHeight: 0,
         }}
       >
-        <Stack
-          component={Paper}
-          spacing={2.5}
+        <Paper
           sx={{
             p: { xs: 2.5, md: 3 },
             borderRadius: 3,
-            height: "100%",
             position: "relative",
             overflow: "hidden",
             backdropFilter: "blur(18px)",
@@ -384,6 +367,14 @@ export default function CourseCatalog({
               `1px solid ${alpha(theme.palette.divider, 0.35)}`,
             boxShadow: (theme) =>
               `0 30px 70px ${alpha(theme.palette.common.black, 0.22)}`,
+            width: { xs: "100%", lg: 320 },
+            flexShrink: 0,
+            alignSelf: { lg: "flex-start" },
+            position: { lg: "sticky" },
+            top: { lg: 0 },
+            maxHeight: { lg: "calc(100vh - 200px)" },
+            display: "flex",
+            flexDirection: "column",
             "&::before": {
               content: '""',
               position: "absolute",
@@ -413,7 +404,7 @@ export default function CourseCatalog({
             },
           }}
         >
-          <Stack spacing={1.5}>
+          <Stack spacing={2.5} sx={{ position: "relative", flex: 1, minHeight: 0 }}>
             <Typography variant="overline" color="text.secondary">
               Program Planner
             </Typography>
@@ -450,7 +441,8 @@ export default function CourseCatalog({
               sx={{
                 borderRadius: 2.5,
                 overflow: "auto",
-                maxHeight: { xs: 260, md: 300 },
+                flex: 1,
+                minHeight: 0,
                 pr: 0.5,
                 pt: 0.5,
                 pb: 0.75,
@@ -654,6 +646,7 @@ export default function CourseCatalog({
                 variant="contained"
                 size="small"
                 startIcon={<UploadIcon />}
+                disabled={savingPlan}
               >
                 Upload JSON
                 <input
@@ -668,6 +661,7 @@ export default function CourseCatalog({
                 size="small"
                 startIcon={<RestartAltIcon />}
                 onClick={resetPlan}
+                disabled={savingPlan}
               >
                 Reset to default
               </Button>
@@ -689,8 +683,23 @@ export default function CourseCatalog({
               course codes.
             </Typography>
             {uploadError && <Alert severity="error">{uploadError}</Alert>}
+            {!uploadError && planSyncError && (
+              <Alert severity="error">{planSyncError}</Alert>
+            )}
+            {!planSyncError && (
+              <Typography variant="caption" color="text.secondary">
+                {savingPlan
+                  ? "Saving your requirement plan..."
+                  : planSyncLoading
+                  ? "Loading your saved requirement plan..."
+                  : lastSyncedAt
+                  ? `Last saved ${new Date(lastSyncedAt).toLocaleString()}`
+                  : "Changes save to your account automatically."}
+              </Typography>
+            )}
           </Stack>
         </Stack>
+        </Paper>
 
         <Paper
           variant="outlined"
@@ -711,6 +720,8 @@ export default function CourseCatalog({
               `1px solid ${alpha(theme.palette.divider, 0.35)}`,
             boxShadow: (theme) =>
               `0 28px 60px ${alpha(theme.palette.common.black, 0.2)}`,
+            flex: 1,
+            minWidth: 0,
             "&::before": {
               content: '""',
               position: "absolute",
