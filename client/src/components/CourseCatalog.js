@@ -117,10 +117,20 @@ export default function CourseCatalog({
   }, [rawSearch, debouncedSetSearch]);
   useEffect(() => () => debouncedSetSearch.cancel(), [debouncedSetSearch]);
 
+  const normalizeCode = (code = "") => code.replace(/\s+/g, "");
+
+  const presentableCode = (code = "") => {
+    const trimmed = code.trim();
+    if (!trimmed) return "";
+    const match = trimmed.match(/^([A-Za-z]+)([0-9].*)$/);
+    if (!match) return trimmed;
+    return `${match[1]} ${match[2]}`;
+  };
+
   const requiredSet = useMemo(() => {
     const s = new Set();
     planData.requirements.forEach((r) =>
-      r.options.forEach((code) => s.add(code))
+      r.options.forEach((code) => s.add(normalizeCode(code)))
     );
     return s;
   }, [planData]);
@@ -132,7 +142,9 @@ export default function CourseCatalog({
 
   const requirementProgress = useMemo(() => {
     return planData.requirements.map((req) => {
-      const matchedCode = req.options.find((code) => planCodes.has(code));
+      const matchedCode = req.options.find((code) =>
+        planCodes.has(normalizeCode(code))
+      );
       return {
         ...req,
         matchedCode,
@@ -151,6 +163,14 @@ export default function CourseCatalog({
     () => Array.from(new Set(courses.map((c) => c.subjectCode))).sort(),
     [courses]
   );
+
+  const courseMap = useMemo(() => {
+    return courses.reduce((map, course) => {
+      const key = course.subjectCode + course.catalogNumber;
+      map.set(key, course);
+      return map;
+    }, new Map());
+  }, [courses]);
 
   const rows = useMemo(
     () =>
@@ -296,8 +316,25 @@ export default function CourseCatalog({
     setUploadError(null);
   };
 
-  function openInfo(course) {
-    setDialogCourse(course);
+  function openInfo(courseOrCode) {
+    if (!courseOrCode) return;
+    let nextCourse = courseOrCode;
+    if (typeof courseOrCode === "string") {
+      const normalized = normalizeCode(courseOrCode);
+      nextCourse = courseMap.get(normalized);
+      if (!nextCourse) {
+        const subject = normalized.match(/^[A-Za-z]+/)?.[0] || normalized;
+        const catalog = normalized.slice(subject.length);
+        nextCourse = {
+          subjectCode: subject,
+          catalogNumber: catalog,
+          title: "Course details unavailable",
+          description:
+            "We couldn't find this course in the current catalog, but it is still part of the structured requirement list.",
+        };
+      }
+    }
+    setDialogCourse(nextCourse);
     setDialogTerm(termOptions[0]);
   }
   function closeInfo() {
@@ -310,6 +347,11 @@ export default function CourseCatalog({
     );
     closeInfo();
   }
+
+  const handleRequirementChipClick = (code) => {
+    const normalized = normalizeCode(code);
+    openInfo(normalized);
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", flex: 1, gap: 3 }}>
@@ -332,11 +374,43 @@ export default function CourseCatalog({
             height: "100%",
             position: "relative",
             overflow: "hidden",
-            backdropFilter: "blur(10px)",
+            backdropFilter: "blur(18px)",
             background: (theme) =>
-              alpha(theme.palette.background.paper, 0.85),
+              `linear-gradient(160deg, ${alpha(
+                theme.palette.background.paper,
+                0.65
+              )} 0%, ${alpha(theme.palette.background.paper, 0.42)} 100%)`,
             border: (theme) =>
-              `1px solid ${alpha(theme.palette.divider, 0.4)}`,
+              `1px solid ${alpha(theme.palette.divider, 0.35)}`,
+            boxShadow: (theme) =>
+              `0 30px 70px ${alpha(theme.palette.common.black, 0.22)}`,
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              inset: -60,
+              background: (theme) =>
+                `radial-gradient(55% 55% at 15% 20%, ${alpha(
+                  theme.palette.primary.light,
+                  0.25
+                )} 0%, transparent 65%)`,
+              filter: "blur(80px)",
+              opacity: 0.9,
+            },
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              borderRadius: "inherit",
+              background: (theme) =>
+                `linear-gradient(120deg, ${alpha(
+                  theme.palette.common.white,
+                  0.08
+                )} 0%, transparent 45%, ${alpha(
+                  theme.palette.primary.main,
+                  0.12
+                )} 100%)`,
+              pointerEvents: "none",
+            },
           }}
         >
           <Stack spacing={1.5}>
@@ -367,17 +441,20 @@ export default function CourseCatalog({
 
           <Divider sx={{ opacity: 0.6 }} />
 
-          <Stack spacing={1} sx={{ flexGrow: 1, minHeight: 0 }}>
+          <Stack spacing={1.25} sx={{ flexGrow: 1, minHeight: 0 }}>
             <Typography variant="subtitle2" color="text.secondary">
               Requirement checklist
             </Typography>
             <List
               dense
               sx={{
-                borderRadius: 2,
+                borderRadius: 2.5,
                 overflow: "auto",
-                maxHeight: { xs: 240, md: 280 },
+                maxHeight: { xs: 260, md: 300 },
                 pr: 0.5,
+                pt: 0.5,
+                pb: 0.75,
+                position: "relative",
               }}
             >
               {requirementProgress.length === 0 ? (
@@ -389,24 +466,116 @@ export default function CourseCatalog({
                 </ListItem>
               ) : (
                 requirementProgress.map((req, idx) => (
-                  <ListItem key={`${req.description}-${idx}`} disableGutters>
-                    <ListItemIcon sx={{ minWidth: 32 }}>
-                      {req.satisfied ? (
-                        <CheckCircleIcon color="success" fontSize="small" />
-                      ) : (
-                        <RadioButtonUncheckedIcon color="disabled" fontSize="small" />
-                      )}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={req.description}
-                      secondary={
-                        req.satisfied
-                          ? `Satisfied by ${req.matchedCode}`
-                          : `Choose: ${req.options.join(", ")}`
-                      }
-                      primaryTypographyProps={{ fontSize: 14 }}
-                      secondaryTypographyProps={{ fontSize: 12 }}
-                    />
+                  <ListItem
+                    key={`${req.description}-${idx}`}
+                    disableGutters
+                    sx={{
+                      mb: 1,
+                      px: 1.25,
+                      py: 1.1,
+                      borderRadius: 2,
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      gap: 0.75,
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.background.paper, 0.55),
+                      border: (theme) =>
+                        `1px solid ${alpha(
+                          req.satisfied
+                            ? theme.palette.success.main
+                            : theme.palette.primary.main,
+                          req.satisfied ? 0.35 : 0.2
+                        )}`,
+                      boxShadow: (theme) =>
+                        `0 18px 32px ${alpha(
+                          req.satisfied
+                            ? theme.palette.success.main
+                            : theme.palette.primary.main,
+                          0.14
+                        )}`,
+                      backdropFilter: "blur(12px)",
+                      transition: "transform 0.25s ease, box-shadow 0.25s ease",
+                      "&:hover": {
+                        transform: "translateY(-2px)",
+                        boxShadow: (theme) =>
+                          `0 24px 40px ${alpha(
+                            req.satisfied
+                              ? theme.palette.success.main
+                              : theme.palette.primary.main,
+                            0.22
+                          )}`,
+                      },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
+                        {req.satisfied ? (
+                          <CheckCircleIcon color="success" fontSize="small" />
+                        ) : (
+                          <RadioButtonUncheckedIcon color="disabled" fontSize="small" />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={req.description}
+                        primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}
+                        secondaryTypographyProps={{ fontSize: 12 }}
+                        secondary={
+                          req.satisfied
+                            ? `Satisfied by ${presentableCode(req.matchedCode)}`
+                            : "Tap a course below to review and add it to your plan."
+                        }
+                      />
+                    </Stack>
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                      {req.options.map((optionCode) => {
+                        const normalized = normalizeCode(optionCode);
+                        const inPlan = planCodes.has(normalized);
+                        return (
+                          <Tooltip
+                            key={optionCode}
+                            title={
+                              inPlan
+                                ? "Already in your planner"
+                                : "Preview details and choose a term"
+                            }
+                          >
+                            <Chip
+                              clickable
+                              label={presentableCode(optionCode)}
+                              color={inPlan ? "success" : "primary"}
+                              variant={inPlan ? "filled" : "outlined"}
+                              icon={
+                                inPlan ? (
+                                  <CheckCircleIcon sx={{ fontSize: 18 }} />
+                                ) : undefined
+                              }
+                              onClick={() => handleRequirementChipClick(optionCode)}
+                              sx={{
+                                fontSize: 13,
+                                backdropFilter: "blur(6px)",
+                                boxShadow: (theme) =>
+                                  `0 12px 24px ${alpha(
+                                    inPlan
+                                      ? theme.palette.success.main
+                                      : theme.palette.primary.main,
+                                    0.22
+                                  )}`,
+                                borderColor: (theme) =>
+                                  alpha(
+                                    inPlan
+                                      ? theme.palette.success.main
+                                      : theme.palette.primary.main,
+                                    inPlan ? 0.45 : 0.35
+                                  ),
+                                "& .MuiChip-icon": {
+                                  color: (theme) => theme.palette.success.contrastText,
+                                },
+                              }}
+                            />
+                          </Tooltip>
+                        );
+                      })}
+                    </Stack>
                   </ListItem>
                 ))
               )}
@@ -526,11 +695,34 @@ export default function CourseCatalog({
         <Paper
           variant="outlined"
           sx={{
+            position: "relative",
             borderRadius: 3,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
             minHeight: 0,
+            backdropFilter: "blur(16px)",
+            background: (theme) =>
+              `linear-gradient(150deg, ${alpha(
+                theme.palette.background.paper,
+                0.7
+              )} 0%, ${alpha(theme.palette.background.paper, 0.45)} 100%)`,
+            border: (theme) =>
+              `1px solid ${alpha(theme.palette.divider, 0.35)}`,
+            boxShadow: (theme) =>
+              `0 28px 60px ${alpha(theme.palette.common.black, 0.2)}`,
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              inset: -80,
+              background: (theme) =>
+                `radial-gradient(65% 55% at 85% 15%, ${alpha(
+                  theme.palette.secondary.light,
+                  0.3
+                )} 0%, transparent 70%)`,
+              filter: "blur(90px)",
+              opacity: 0.9,
+            },
           }}
         >
           <Box sx={{ p: 3, pb: 2 }}>
@@ -584,7 +776,16 @@ export default function CourseCatalog({
                   },
                   "& .MuiDataGrid-virtualScroller": {
                     backgroundColor: (theme) =>
-                      alpha(theme.palette.background.paper, 0.6),
+                      alpha(theme.palette.background.paper, 0.55),
+                  },
+                  "& .MuiDataGrid-row": {
+                    transition: "background 0.2s ease",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                  },
+                  "& .MuiDataGrid-row:hover": {
+                    backgroundColor: (theme) =>
+                      alpha(theme.palette.primary.main, 0.08),
                   },
                 }}
               />
