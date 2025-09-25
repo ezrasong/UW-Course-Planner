@@ -18,6 +18,7 @@ import {
   LinearProgress,
   Alert,
   Tooltip,
+  Divider,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import {
@@ -357,73 +358,179 @@ function App() {
                   alt="UW Logo"
                   sx={{ height: 42 }}
                 />
-                <Stack direction="row" spacing={1.5}>
-                  <Button
-                    sx={{ ...tabSx("catalog"), minWidth: 150 }}
-                    onClick={() => setView("catalog")}
-                  >
-                    Course Catalog
-                  </Button>
-                  <Button
-                    sx={{ ...tabSx("planner"), minWidth: 120 }}
-                    onClick={() => setView("planner")}
-                  >
-                    Planner
-                  </Button>
-                  <Button
-                    sx={{ ...tabSx("guides"), minWidth: 150 }}
-                    onClick={() => setView("guides")}
-                  >
-                    Resource Hub
-                  </Button>
-                </Stack>
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 1,
+                    px: { xs: 0.75, md: 1 },
+                    py: { xs: 0.6, md: 0.7 },
+                    borderRadius: 999,
+                    position: "relative",
+                    backdropFilter: "blur(14px)",
+                    background: (theme) =>
+                      `linear-gradient(130deg, ${alpha(
+                        theme.palette.background.paper,
+                        darkMode ? 0.35 : 0.75
+                      )}, ${alpha(theme.palette.background.paper, darkMode ? 0.18 : 0.55)})`,
+                    border: (theme) =>
+                      `1px solid ${alpha(
+                        theme.palette.divider,
+                        darkMode ? 0.55 : 0.32
+                      )}`,
+                    boxShadow: (theme) =>
+                      `0 18px 34px ${alpha(
+                        theme.palette.common.black,
+                        darkMode ? 0.45 : 0.15
+                      )}`,
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: "inherit",
+                      background: (theme) =>
+                        `linear-gradient(120deg, ${alpha(
+                          theme.palette.primary.main,
+                          darkMode ? 0.22 : 0.18
+                        )} 0%, transparent 55%, ${alpha(
+                          theme.palette.secondary.main,
+                          darkMode ? 0.18 : 0.16
+                        )} 100%)`,
+                      opacity: 0.4,
+                      pointerEvents: "none",
+                    },
+                  }}
+                >
+                  <Stack direction="row" spacing={1.5} sx={{ position: "relative" }}>
+                    <Button
+                      sx={{ ...tabSx("catalog"), minWidth: 150 }}
+                      onClick={() => setView("catalog")}
+                    >
+                      Course Catalog
+                    </Button>
+                    <Button
+                      sx={{ ...tabSx("planner"), minWidth: 120 }}
+                      onClick={() => setView("planner")}
+                    >
+                      Planner
+                    </Button>
+                    <Button
+                      sx={{ ...tabSx("guides"), minWidth: 150 }}
+                      onClick={() => setView("guides")}
+                    >
+                      Resource Hub
+                    </Button>
+                  </Stack>
+                </Box>
               </Stack>
-              <Stack
-                direction="row"
-                alignItems="center"
-                spacing={{ xs: 1, sm: 1.5 }}
+              <Box
                 sx={{
-                  px: { xs: 0.5, sm: 0 },
-                  py: 0.5,
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: { xs: 0.75, sm: 1 },
+                  px: { xs: 1, sm: 1.75 },
+                  py: { xs: 0.85, sm: 0.9 },
                   borderRadius: 999,
-                  bgcolor: (theme) =>
-                    alpha(theme.palette.primary.main, darkMode ? 0.12 : 0.08),
+                  backdropFilter: "blur(16px)",
+                  background: (theme) =>
+                    `linear-gradient(135deg, ${alpha(
+                      theme.palette.primary.main,
+                      darkMode ? 0.4 : 0.55
+                    )} 0%, ${alpha(
+                      theme.palette.secondary.main,
+                      darkMode ? 0.32 : 0.42
+                    )} 100%)`,
+                  border: (theme) =>
+                    `1px solid ${alpha(
+                      theme.palette.common.white,
+                      darkMode ? 0.24 : 0.4
+                    )}`,
+                  boxShadow: (theme) =>
+                    `0 24px 46px ${alpha(
+                      theme.palette.primary.main,
+                      darkMode ? 0.45 : 0.3
+                    )}`,
+                  color: (theme) =>
+                    theme.palette.getContrastText(theme.palette.primary.main),
+                  overflow: "hidden",
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "inherit",
+                    background: (theme) =>
+                      `radial-gradient(80% 120% at 20% 10%, ${alpha(
+                        theme.palette.common.white,
+                        0.22
+                      )} 0%, transparent 60%)`,
+                    opacity: 0.85,
+                    pointerEvents: "none",
+                  },
                 }}
               >
-                <Stack spacing={0} sx={{ textAlign: "right" }}>
+                <Stack spacing={0.2} sx={{ textAlign: "right", position: "relative" }}>
                   <Typography
                     variant="subtitle2"
                     sx={{ fontWeight: 600, lineHeight: 1.2 }}
-                    color="text.primary"
+                    color="inherit"
                   >
                     {displayName}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="inherit" sx={{ opacity: 0.85 }}>
                     Signed in
                   </Typography>
                 </Stack>
                 <Avatar
                   alt={displayName}
-                  sx={{ bgcolor: "primary.main", color: "primary.contrastText" }}
+                  sx={{
+                    bgcolor: alpha("#000", 0.2),
+                    color: "inherit",
+                    fontWeight: 600,
+                    position: "relative",
+                  }}
                 >
                   {initials}
                 </Avatar>
+                <Divider
+                  orientation="vertical"
+                  flexItem
+                  sx={{
+                    borderColor: alpha("#fff", 0.35),
+                    mx: { xs: 0.5, sm: 0.75 },
+                  }}
+                />
                 <Tooltip title="Sign out">
                   <span>
-                    <IconButton color="inherit" onClick={handleLogout}>
+                    <IconButton
+                      onClick={handleLogout}
+                      sx={{
+                        color: "inherit",
+                        bgcolor: alpha("#000", 0.18),
+                        "&:hover": {
+                          bgcolor: alpha("#000", 0.28),
+                        },
+                      }}
+                    >
                       <LogoutIcon />
                     </IconButton>
                   </span>
                 </Tooltip>
                 <Tooltip title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
                   <IconButton
-                    color="inherit"
                     onClick={() => setDarkMode((d) => !d)}
+                    sx={{
+                      color: "inherit",
+                      bgcolor: alpha("#000", 0.18),
+                      "&:hover": {
+                        bgcolor: alpha("#000", 0.28),
+                      },
+                    }}
                   >
                     {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
                   </IconButton>
                 </Tooltip>
-              </Stack>
+              </Box>
             </Container>
           </Toolbar>
         </AppBar>
