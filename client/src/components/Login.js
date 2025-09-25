@@ -5,6 +5,7 @@ import {
   Google as GoogleIcon,
   GitHub as GitHubIcon,
 } from "@mui/icons-material";
+import { alpha } from "@mui/material/styles";
 
 const GITHUB_PAGES_URL = "https://ezrasong.github.io/UW-Course-Planner";
 
@@ -43,17 +44,42 @@ export default function Login({ onLogin }) {
           position: "fixed",
           inset: 0,
           background: `url(${bgUrl}) center/cover no-repeat`,
-          zIndex: -1,
+          filter: "brightness(0.65)",
+          transform: "scale(1.05)",
+          transformOrigin: "center",
+          zIndex: -2,
         }}
       />
       <Box
         sx={{
           position: "fixed",
           inset: 0,
-          background:
-            "linear-gradient(135deg, rgba(13, 30, 66, 0.65), rgba(0, 0, 0, 0.7))",
-          backdropFilter: "blur(6px)",
-          zIndex: 0,
+          zIndex: -1,
+          overflow: "hidden",
+          background: (theme) =>
+            `radial-gradient(120% 120% at 0% 100%, ${alpha(
+              theme.palette.primary.main,
+              0.45
+            )} 0%, transparent 60%), radial-gradient(120% 120% at 100% 0%, ${alpha(
+              theme.palette.secondary.main,
+              0.4
+            )} 0%, transparent 65%), linear-gradient(135deg, ${alpha(
+              theme.palette.background.default,
+              0.85
+            )}, ${alpha(theme.palette.background.paper, 0.9)})`,
+          backdropFilter: "blur(14px)",
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            inset: "-40%",
+            background: (theme) =>
+              `radial-gradient(70% 70% at 50% 30%, ${alpha(
+                theme.palette.common.white,
+                0.35
+              )} 0%, transparent 70%)`,
+            filter: "blur(120px)",
+            opacity: 0.55,
+          },
         }}
       />
 
@@ -69,18 +95,69 @@ export default function Login({ onLogin }) {
         }}
       >
         <Paper
-          elevation={6}
+          elevation={0}
           sx={{
             width: { xs: 340, sm: 380 },
-            p: { xs: 3, sm: 4 },
+            p: { xs: 3.5, sm: 4.5 },
             display: "flex",
             flexDirection: "column",
             alignItems: "stretch",
             textAlign: "center",
-            borderRadius: 3,
-            backgroundColor: "rgba(255,255,255,0.92)",
+            borderRadius: 4,
+            position: "relative",
+            overflow: "hidden",
+            gap: 3,
+            background: (theme) =>
+              `linear-gradient(150deg, ${alpha(
+                theme.palette.background.paper,
+                theme.palette.mode === "dark" ? 0.38 : 0.86
+              )} 0%, ${alpha(
+                theme.palette.background.paper,
+                theme.palette.mode === "dark" ? 0.16 : 0.7
+              )} 100%)`,
+            border: (theme) =>
+              `1px solid ${alpha(
+                theme.palette.common.white,
+                theme.palette.mode === "dark" ? 0.12 : 0.4
+              )}`,
             boxShadow: (theme) =>
-              `0 30px 80px rgba(0,0,0,${theme.palette.mode === "dark" ? 0.65 : 0.25})`,
+              `0 45px 110px ${alpha(
+                theme.palette.common.black,
+                theme.palette.mode === "dark" ? 0.6 : 0.22
+              )}`,
+            backdropFilter: "blur(24px)",
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              inset: -80,
+              background: (theme) =>
+                `radial-gradient(60% 55% at 30% 25%, ${alpha(
+                  theme.palette.primary.main,
+                  0.28
+                )} 0%, transparent 70%)`,
+              filter: "blur(100px)",
+              opacity: 0.8,
+            },
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              borderRadius: "inherit",
+              background: (theme) =>
+                `linear-gradient(140deg, ${alpha(
+                  theme.palette.common.white,
+                  0.18
+                )} 0%, transparent 55%, ${alpha(
+                  theme.palette.common.white,
+                  0.08
+                )} 100%)`,
+              opacity: 0.6,
+              pointerEvents: "none",
+            },
+            "& > *": {
+              position: "relative",
+              zIndex: 1,
+            },
           }}
         >
           <Stack spacing={2} alignItems="center">
@@ -114,6 +191,13 @@ export default function Login({ onLogin }) {
                 py: 1,
                 fontWeight: 600,
                 textTransform: "none",
+                borderRadius: 999,
+                backdropFilter: "blur(6px)",
+                boxShadow: (theme) =>
+                  `0 18px 45px ${alpha(
+                    theme.palette.primary.main,
+                    0.28
+                  )}`,
               }}
             >
               Continue with Google
@@ -129,7 +213,14 @@ export default function Login({ onLogin }) {
                 py: 1,
                 fontWeight: 600,
                 textTransform: "none",
+                borderRadius: 999,
                 borderWidth: 2,
+                backdropFilter: "blur(6px)",
+                boxShadow: (theme) =>
+                  `0 16px 40px ${alpha(
+                    theme.palette.common.black,
+                    0.22
+                  )}`,
                 "&:hover": {
                   borderWidth: 2,
                 },

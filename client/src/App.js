@@ -44,13 +44,167 @@ function App() {
   const [catalogError, setCatalogError] = useState(null);
   const [planError, setPlanError] = useState(null);
 
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: { mode: darkMode ? "dark" : "light" },
-      }),
-    [darkMode]
-  );
+  const theme = useMemo(() => {
+    const baseTheme = createTheme({
+      palette: { mode: darkMode ? "dark" : "light" },
+      shape: { borderRadius: 18 },
+      typography: {
+        fontFamily: [
+          "Inter",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica",
+          "Arial",
+          "sans-serif",
+        ].join(","),
+      },
+    });
+
+    const surfaceGradient = `linear-gradient(140deg, ${alpha(
+      baseTheme.palette.background.paper,
+      darkMode ? 0.32 : 0.82
+    )} 0%, ${alpha(
+      baseTheme.palette.background.paper,
+      darkMode ? 0.15 : 0.62
+    )} 100%)`;
+    const surfaceBorder = `1px solid ${alpha(
+      darkMode ? baseTheme.palette.common.white : baseTheme.palette.common.black,
+      darkMode ? 0.1 : 0.12
+    )}`;
+    const floatingShadow = `0 32px 80px ${alpha(
+      baseTheme.palette.common.black,
+      darkMode ? 0.6 : 0.18
+    )}`;
+
+    const floatingSurface = {
+      backgroundImage: "none",
+      background: surfaceGradient,
+      border: surfaceBorder,
+      backdropFilter: "blur(24px)",
+      boxShadow: floatingShadow,
+    };
+
+    return createTheme(baseTheme, {
+      components: {
+        MuiCssBaseline: {
+          styleOverrides: {
+            body: {
+              minHeight: "100vh",
+              position: "relative",
+              backgroundAttachment: "fixed",
+              background: `radial-gradient(120% 120% at 0% 0%, ${alpha(
+                baseTheme.palette.primary.main,
+                darkMode ? 0.24 : 0.16
+              )} 0%, transparent 60%), radial-gradient(110% 110% at 100% 0%, ${alpha(
+                baseTheme.palette.secondary.main,
+                darkMode ? 0.22 : 0.14
+              )} 0%, transparent 62%), linear-gradient(180deg, ${alpha(
+                baseTheme.palette.background.default,
+                1
+              )} 0%, ${alpha(
+                baseTheme.palette.background.paper,
+                darkMode ? 0.95 : 0.9
+              )} 100%)`,
+            },
+            "&::before": {
+              content: '""',
+              position: "fixed",
+              inset: "-35% -15%",
+              pointerEvents: "none",
+              background: `radial-gradient(70% 70% at 45% 10%, ${alpha(
+                baseTheme.palette.primary.light,
+                darkMode ? 0.28 : 0.24
+              )} 0%, transparent 65%)`,
+              filter: "blur(120px)",
+              opacity: darkMode ? 0.7 : 0.55,
+              zIndex: -1,
+            },
+            "&::after": {
+              content: '""',
+              position: "fixed",
+              inset: "-30% -20%",
+              pointerEvents: "none",
+              background: `radial-gradient(65% 65% at 80% 85%, ${alpha(
+                baseTheme.palette.secondary.light,
+                darkMode ? 0.3 : 0.22
+              )} 0%, transparent 70%)`,
+              filter: "blur(120px)",
+              opacity: darkMode ? 0.65 : 0.5,
+              zIndex: -1,
+            },
+            "*, *::before, *::after": {
+              boxSizing: "border-box",
+            },
+            "::selection": {
+              backgroundColor: alpha(
+                baseTheme.palette.primary.main,
+                darkMode ? 0.4 : 0.3
+              ),
+              color: baseTheme.palette.common.white,
+            },
+          },
+        },
+        MuiPaper: {
+          styleOverrides: {
+            root: floatingSurface,
+          },
+        },
+        MuiAppBar: {
+          styleOverrides: {
+            root: {
+              ...floatingSurface,
+              borderRadius: 28,
+              boxShadow: `0 28px 70px ${alpha(
+                baseTheme.palette.common.black,
+                darkMode ? 0.55 : 0.2
+              )}`,
+            },
+          },
+        },
+        MuiMenu: {
+          styleOverrides: {
+            paper: floatingSurface,
+          },
+        },
+        MuiPopover: {
+          styleOverrides: {
+            paper: floatingSurface,
+          },
+        },
+        MuiDialog: {
+          styleOverrides: {
+            paper: {
+              ...floatingSurface,
+              borderRadius: 24,
+            },
+          },
+        },
+        MuiCard: {
+          styleOverrides: {
+            root: floatingSurface,
+          },
+        },
+        MuiTableContainer: {
+          styleOverrides: {
+            root: floatingSurface,
+          },
+        },
+        MuiTooltip: {
+          styleOverrides: {
+            tooltip: {
+              backdropFilter: "blur(12px)",
+              backgroundColor: alpha(
+                baseTheme.palette.grey[900],
+                darkMode ? 0.75 : 0.65
+              ),
+            },
+          },
+        },
+      },
+    });
+  }, [darkMode]);
 
   const planCodes = useMemo(
     () => new Set(plan.map((entry) => entry.course_code)),
