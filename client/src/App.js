@@ -28,6 +28,7 @@ import { fetchCourses } from "./api/fetchCourses";
 import CourseCatalog from "./components/CourseCatalog";
 import Planner from "./components/Planner";
 import Login from "./components/Login";
+import InfoHub from "./components/InfoHub";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -176,6 +177,26 @@ function App() {
       .split(".")
       .map((w) => w[0].toUpperCase() + w.slice(1))
       .join(" ");
+  const viewMeta = {
+    catalog: {
+      title: "Explore the catalog",
+      description:
+        "Filter the university catalog, inspect prerequisites, and add courses straight into your personalized plan.",
+    },
+    planner: {
+      title: "Plan with clarity",
+      description:
+        "Track completion status term-by-term, balance workloads, and keep your graduation checklist within reach.",
+    },
+    guides: {
+      title: "Master the workflow",
+      description:
+        "Understand JSON plan formatting, data expectations, and process tips so custom requirement files feel production-ready.",
+    },
+  };
+
+  const activeView = viewMeta[view] ?? viewMeta.catalog;
+
   const tabSx = (viewName) => ({
     textTransform: "none",
     whiteSpace: "nowrap",
@@ -250,6 +271,12 @@ function App() {
                 >
                   Planner
                 </Button>
+                <Button
+                  sx={{ ...tabSx("guides"), minWidth: 150 }}
+                  onClick={() => setView("guides")}
+                >
+                  Resource Hub
+                </Button>
               </Stack>
             </Stack>
             <Typography sx={{ color: "text.primary", fontWeight: 500 }}>
@@ -303,12 +330,10 @@ function App() {
             </Fade>
             <Stack spacing={2} sx={{ mb: 3 }}>
               <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                {view === "catalog" ? "Explore the catalog" : "Plan with clarity"}
+                {activeView.title}
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                {view === "catalog"
-                  ? "Filter the university catalog, inspect prerequisites, and add courses straight into your personalized plan."
-                  : "Track completion status term-by-term, balance workloads, and keep your graduation checklist within reach."}
+                {activeView.description}
               </Typography>
             </Stack>
             {(catalogError || planError) && (
@@ -333,7 +358,7 @@ function App() {
                 onRemoveCourse={removeCourse}
                 loading={loadingCourses}
               />
-            ) : (
+            ) : view === "planner" ? (
               <Planner
                 plan={plan}
                 coursesMap={coursesMap}
@@ -341,6 +366,8 @@ function App() {
                 onToggleComplete={toggleComplete}
                 loading={loadingPlan}
               />
+            ) : (
+              <InfoHub />
             )}
           </Paper>
         </Container>
