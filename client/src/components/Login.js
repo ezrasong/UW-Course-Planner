@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import { Box, Paper, Typography, Button } from "@mui/material";
+import { Box, Paper, Typography, Button, Stack, Divider } from "@mui/material";
 import {
   Google as GoogleIcon,
   GitHub as GitHubIcon,
@@ -46,6 +46,16 @@ export default function Login({ onLogin }) {
           zIndex: -1,
         }}
       />
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          background:
+            "linear-gradient(135deg, rgba(13, 30, 66, 0.65), rgba(0, 0, 0, 0.7))",
+          backdropFilter: "blur(6px)",
+          zIndex: 0,
+        }}
+      />
 
       <Box
         sx={{
@@ -61,51 +71,73 @@ export default function Login({ onLogin }) {
         <Paper
           elevation={6}
           sx={{
-            width: 360,
-            height: 360,
-            bgcolor: "rgba(255,255,255,0.9)",
-            p: 3,
+            width: { xs: 340, sm: 380 },
+            p: { xs: 3, sm: 4 },
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
+            alignItems: "stretch",
             textAlign: "center",
-            borderRadius: 2,
-            justifyContent: "center",
+            borderRadius: 3,
+            backgroundColor: "rgba(255,255,255,0.92)",
+            boxShadow: (theme) =>
+              `0 30px 80px rgba(0,0,0,${theme.palette.mode === "dark" ? 0.65 : 0.25})`,
           }}
         >
-          <Box
-            component="img"
-            src={logoUrl}
-            alt="UW Logo"
-            sx={{ width: 80, mb: 1 }}
-          />
+          <Stack spacing={2} alignItems="center">
+            <Box
+              component="img"
+              src={logoUrl}
+              alt="UW Logo"
+              sx={{ width: 84, height: 84 }}
+            />
+            <Stack spacing={0.5}>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                Waterloo Course Planner
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Curate your academic journey, organize terms, and keep track of
+                every requirement in one place.
+              </Typography>
+            </Stack>
+          </Stack>
 
-          <Typography variant="h5" gutterBottom>
-            Waterloo Course Planner
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            Sign in to continue
-          </Typography>
+          <Divider sx={{ my: 3 }}>Sign in to continue</Divider>
 
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<GoogleIcon />}
-            sx={{ mt: 1 }}
-            onClick={() => handleLogin("google")}
-          >
-            Sign in with Google
-          </Button>
+          <Stack spacing={1.5}>
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              startIcon={<GoogleIcon />}
+              onClick={() => handleLogin("google")}
+              sx={{
+                py: 1,
+                fontWeight: 600,
+                textTransform: "none",
+              }}
+            >
+              Continue with Google
+            </Button>
 
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<GitHubIcon />}
-            sx={{ mt: 1 }}
-            onClick={() => handleLogin("github")}
-          >
-            Sign in with GitHub
-          </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<GitHubIcon />}
+              onClick={() => handleLogin("github")}
+              sx={{
+                py: 1,
+                fontWeight: 600,
+                textTransform: "none",
+                borderWidth: 2,
+                "&:hover": {
+                  borderWidth: 2,
+                },
+              }}
+            >
+              Continue with GitHub
+            </Button>
+          </Stack>
         </Paper>
       </Box>
     </>

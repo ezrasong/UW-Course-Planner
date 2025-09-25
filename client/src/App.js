@@ -13,6 +13,9 @@ import {
   Container,
   Paper,
   Stack,
+  Fade,
+  LinearProgress,
+  Alert,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import {
@@ -32,6 +35,10 @@ function App() {
   const [plan, setPlan] = useState([]);
   const [view, setView] = useState("catalog");
   const [darkMode, setDarkMode] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+  const [catalogError, setCatalogError] = useState(null);
+  const [planError, setPlanError] = useState(null);
 
   const theme = useMemo(
     () =>
@@ -62,18 +69,39 @@ function App() {
   useEffect(() => {
     if (!user) return;
 
+    setLoadingCourses(true);
+    setCatalogError(null);
     fetchCourses()
-      .then(setCourses)
-      .catch((err) => console.error("Error loading courses:", err));
+      .then((fetched) => {
+        setCourses(fetched);
+      })
+      .catch((err) => {
+        console.error("Error loading courses:", err);
+        setCatalogError(
+          "We ran into a problem loading the catalog. Please try again in a moment."
+        );
+      })
+      .finally(() => setLoadingCourses(false));
+
+    setPlanError(null);
+    setLoadingPlan(true);
 
     supabase
       .from("user_courses")
       .select("course_code, term, completed")
       .eq("user_id", user.id)
       .then(({ data, error }) => {
-        if (error) console.error("Error loading plan:", error);
-        else setPlan(data || []);
-      });
+        if (error) {
+          console.error("Error loading plan:", error);
+          setPlanError(
+            "Your saved plan could not be retrieved. Refresh or try again shortly."
+          );
+        } else {
+          setPlanError(null);
+          setPlan(data || []);
+        }
+      })
+      .finally(() => setLoadingPlan(false));
   }, [user]);
 
   const handleLogout = async () => {
@@ -87,17 +115,23 @@ function App() {
   }
 
   const addCourse = (code, term) => {
+    setLoadingPlan(true);
     supabase
       .from("user_courses")
       .insert({ user_id: user.id, course_code: code, term })
       .select()
       .then(({ data, error }) => {
         if (error) console.error("Add course error:", error);
-        else setPlan((prev) => [...prev, data[0]]);
-      });
+        else {
+          setPlanError(null);
+          setPlan((prev) => [...prev, data[0]]);
+        }
+      })
+      .finally(() => setLoadingPlan(false));
   };
 
   const removeCourse = (code) => {
+    setLoadingPlan(true);
     supabase
       .from("user_courses")
       .delete()
@@ -105,13 +139,18 @@ function App() {
       .eq("course_code", code)
       .then(({ error }) => {
         if (error) console.error("Remove course error:", error);
-        else setPlan((prev) => prev.filter((p) => p.course_code !== code));
-      });
+        else {
+          setPlanError(null);
+          setPlan((prev) => prev.filter((p) => p.course_code !== code));
+        }
+      })
+      .finally(() => setLoadingPlan(false));
   };
 
   const toggleComplete = (code) => {
     const entry = plan.find((p) => p.course_code === code);
     if (!entry) return;
+    setLoadingPlan(true);
     supabase
       .from("user_courses")
       .update({ completed: !entry.completed })
@@ -121,11 +160,13 @@ function App() {
       .then(({ data, error }) => {
         if (error) console.error("Toggle complete error:", error);
         else {
+          setPlanError(null);
           setPlan((prev) =>
             prev.map((p) => (p.course_code === code ? data[0] : p))
           );
         }
-      });
+      })
+      .finally(() => setLoadingPlan(false));
   };
 
   const displayName =
@@ -251,12 +292,46 @@ function App() {
               flexDirection: "column",
             }}
           >
+            <Fade in={loadingCourses || loadingPlan} unmountOnExit>
+              <LinearProgress
+                color="primary"
+                sx={{
+                  borderRadius: 999,
+                  mb: 3,
+                }}
+              />
+            </Fade>
+            <Stack spacing={2} sx={{ mb: 3 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                {view === "catalog" ? "Explore the catalog" : "Plan with clarity"}
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                {view === "catalog"
+                  ? "Filter the university catalog, inspect prerequisites, and add courses straight into your personalized plan."
+                  : "Track completion status term-by-term, balance workloads, and keep your graduation checklist within reach."}
+              </Typography>
+            </Stack>
+            {(catalogError || planError) && (
+              <Stack spacing={2} sx={{ mb: 3 }}>
+                {catalogError && (
+                  <Alert severity="error" onClose={() => setCatalogError(null)}>
+                    {catalogError}
+                  </Alert>
+                )}
+                {planError && (
+                  <Alert severity="warning" onClose={() => setPlanError(null)}>
+                    {planError}
+                  </Alert>
+                )}
+              </Stack>
+            )}
             {view === "catalog" ? (
               <CourseCatalog
                 courses={courses}
                 planCodes={planCodes}
                 onAddCourse={addCourse}
                 onRemoveCourse={removeCourse}
+                loading={loadingCourses}
               />
             ) : (
               <Planner
@@ -264,6 +339,7 @@ function App() {
                 coursesMap={coursesMap}
                 onRemoveCourse={removeCourse}
                 onToggleComplete={toggleComplete}
+                loading={loadingPlan}
               />
             )}
           </Paper>
