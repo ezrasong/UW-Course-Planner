@@ -28,6 +28,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Fade,
+  Chip as MuiChip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { DataGrid } from "@mui/x-data-grid";
@@ -94,6 +96,7 @@ export default function CourseCatalog({
   planCodes,
   onAddCourse,
   onRemoveCourse,
+  loading = false,
 }) {
   const [rawSearch, setRawSearch] = useState("");
   const [search, setSearch] = useState("");
@@ -190,6 +193,26 @@ export default function CourseCatalog({
       requiredSet,
       programSubjects,
     ]
+  );
+
+  const visibleCount = rows.length;
+  const filtersActive =
+    programOnly ||
+    requiredOnly ||
+    subjects.length > 0 ||
+    Boolean(search.trim());
+
+  const NoRowsOverlay = () => (
+    <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ p: 4 }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+        No courses match the current filters
+      </Typography>
+      <Typography variant="body2" color="text.secondary" align="center">
+        {filtersActive
+          ? "Adjust or clear the search filters to discover more offerings."
+          : "The catalog may still be loading—please check back in a moment."}
+      </Typography>
+    </Stack>
   );
 
   const columns = [
@@ -507,35 +530,61 @@ export default function CourseCatalog({
           }}
         >
           <Box sx={{ p: 3, pb: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              Course Catalog
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Browse offerings and add them directly to your planner.
-            </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              justifyContent="space-between"
+              alignItems={{ sm: "center" }}
+            >
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  Course Catalog
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Browse offerings and add them directly to your planner.
+                </Typography>
+              </Box>
+              <MuiChip
+                label={`${visibleCount.toLocaleString()} result${
+                  visibleCount === 1 ? "" : "s"
+                }`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            </Stack>
           </Box>
           <Divider />
-          <Box sx={{ flex: 1, minHeight: 0 }}>
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              disableRowSelectionOnClick
-              initialState={{
-                pagination: { paginationModel: { pageSize: 25, page: 0 } },
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
-              sx={{
-                border: 0,
-                px: 2,
-                "& .MuiDataGrid-columnHeaders": {
-                  fontWeight: 600,
-                },
-                "& .MuiDataGrid-virtualScroller": {
-                  backgroundColor: (theme) =>
-                    alpha(theme.palette.background.paper, 0.6),
-                },
-              }}
-            />
+          <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <Fade in={loading} unmountOnExit>
+              <LinearProgress sx={{ borderRadius: 999 }} />
+            </Fade>
+            <Box sx={{ flex: 1, minHeight: 0 }}>
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                disableRowSelectionOnClick
+                loading={loading}
+                slots={{
+                  noRowsOverlay: NoRowsOverlay,
+                }}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 25, page: 0 } },
+                }}
+                pageSizeOptions={[10, 25, 50, 100]}
+                sx={{
+                  border: 0,
+                  px: 2,
+                  "& .MuiDataGrid-columnHeaders": {
+                    fontWeight: 600,
+                  },
+                  "& .MuiDataGrid-virtualScroller": {
+                    backgroundColor: (theme) =>
+                      alpha(theme.palette.background.paper, 0.6),
+                  },
+                }}
+              />
+            </Box>
           </Box>
         </Paper>
       </Box>

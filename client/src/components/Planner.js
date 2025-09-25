@@ -23,6 +23,7 @@ import {
   DialogActions,
   Button,
   LinearProgress,
+  Fade,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InfoIcon from "@mui/icons-material/Info";
@@ -36,6 +37,7 @@ export default function Planner({
   coursesMap,
   onRemoveCourse,
   onToggleComplete,
+  loading = false,
 }) {
   const [search, setSearch] = useState("");
   const [subjects, setSubjects] = useState([]);
@@ -51,6 +53,9 @@ export default function Planner({
     });
     return Array.from(setSub).sort();
   }, [plan]);
+
+  const filtersActive =
+    Boolean(search.trim()) || subjects.length > 0 || statusFilter !== "all";
 
   const filteredPlan = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -123,6 +128,35 @@ export default function Planner({
   };
 
   const selectedCourse = selectedCode ? coursesMap[selectedCode] : null;
+
+  const resetFilters = () => {
+    setSearch("");
+    setSubjects([]);
+    setStatusFilter("all");
+  };
+
+  const emptyStateCopy = !filteredPlan.length
+    ? plan.length === 0
+      ? {
+          title: "Start building your roadmap",
+          description:
+            "Add courses from the catalog to begin organizing your terms and tracking completion.",
+          action: null,
+        }
+      : filtersActive
+      ? {
+          title: "No courses match the current filters",
+          description:
+            "Relax the filters or clear them to see every course that is currently in your plan.",
+          action: resetFilters,
+        }
+      : {
+          title: "Nothing scheduled for these terms yet",
+          description:
+            "Use the course cards to assign terms and mark progress as you complete requirements.",
+          action: null,
+        }
+    : null;
 
   return (
     <Stack spacing={3} sx={{ flex: 1, minHeight: 0 }}>
@@ -251,6 +285,11 @@ export default function Planner({
           gridTemplateColumns: { xs: "1fr", xl: "repeat(2, minmax(0, 1fr))" },
         }}
       >
+        <Fade in={loading} unmountOnExit>
+          <LinearProgress
+            sx={{ gridColumn: "1 / -1", borderRadius: 999, width: "100%" }}
+          />
+        </Fade>
         {groupedTerms.length === 0 ? (
           <Paper
             variant="outlined"
@@ -262,12 +301,22 @@ export default function Planner({
             }}
           >
             <Typography variant="h6" gutterBottom>
-              No courses match the current filters
+              {emptyStateCopy?.title ?? "No courses to display"}
             </Typography>
-            <Typography color="text.secondary">
-              Add courses from the catalog or relax the filters to see items in
-              your planner.
+            <Typography color="text.secondary" sx={{ maxWidth: 420, mx: "auto" }}>
+              {emptyStateCopy?.description ??
+                "Once courses are planned they will appear here organized by term."}
             </Typography>
+            {emptyStateCopy?.action && (
+              <Button
+                onClick={emptyStateCopy.action}
+                sx={{ mt: 2 }}
+                variant="outlined"
+                size="small"
+              >
+                Clear filters
+              </Button>
+            )}
           </Paper>
         ) : (
           groupedTerms.map(({ term, entries, completed, percent }) => (
