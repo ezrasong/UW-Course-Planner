@@ -10,7 +10,11 @@ import {
   Button,
   IconButton,
   Box,
+  Container,
+  Paper,
+  Stack,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
@@ -147,62 +151,123 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppBar position="sticky">
-        <Toolbar>
-          <Box
-            sx={{ display: "flex", alignItems: "center", gap: 3, mr: "auto" }}
-          >
-            <Box
-              component="img"
-              src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
-              alt="UW Logo"
-              sx={{ height: 38 }}
-            />
-            <Button
-              sx={{ ...tabSx("catalog"), minWidth: 140 }}
-              onClick={() => setView("catalog")}
+      <Box
+        sx={{
+          minHeight: "100vh",
+          background: (theme) =>
+            darkMode
+              ? `radial-gradient(circle at 10% 20%, ${alpha(
+                  theme.palette.primary.dark,
+                  0.35
+                )} 0%, transparent 55%), radial-gradient(circle at 90% 0%, ${alpha(
+                  theme.palette.secondary.dark,
+                  0.3
+                )} 0%, transparent 60%), ${theme.palette.background.default}`
+              : `radial-gradient(circle at 0% 0%, ${alpha(
+                  theme.palette.primary.light,
+                  0.4
+                )} 0%, transparent 55%), radial-gradient(circle at 100% 10%, ${alpha(
+                  theme.palette.secondary.light,
+                  0.35
+                )} 0%, transparent 60%), ${theme.palette.background.default}`,
+        }}
+      >
+        <AppBar
+          position="sticky"
+          elevation={0}
+          sx={{
+            backdropFilter: "blur(12px)",
+            backgroundColor: (theme) =>
+              alpha(theme.palette.background.paper, darkMode ? 0.08 : 0.7),
+            borderBottom: (theme) =>
+              `1px solid ${alpha(theme.palette.divider, darkMode ? 0.4 : 0.3)}`,
+          }}
+        >
+          <Toolbar sx={{ gap: 2 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={3}
+              sx={{ mr: "auto" }}
             >
-              Course Catalog
-            </Button>
-            <Button
-              sx={{ ...tabSx("planner"), minWidth: 100 }}
-              onClick={() => setView("planner")}
+              <Box
+                component="img"
+                src={`${process.env.PUBLIC_URL}/uwlogo.svg`}
+                alt="UW Logo"
+                sx={{ height: 42 }}
+              />
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  sx={{ ...tabSx("catalog"), minWidth: 150 }}
+                  onClick={() => setView("catalog")}
+                >
+                  Course Catalog
+                </Button>
+                <Button
+                  sx={{ ...tabSx("planner"), minWidth: 120 }}
+                  onClick={() => setView("planner")}
+                >
+                  Planner
+                </Button>
+              </Stack>
+            </Stack>
+            <Typography sx={{ color: "text.primary", fontWeight: 500 }}>
+              Hello, {displayName}
+            </Typography>
+            <IconButton color="inherit" onClick={handleLogout}>
+              <LogoutIcon />
+            </IconButton>
+            <IconButton
+              color="inherit"
+              onClick={() => setDarkMode((d) => !d)}
+              sx={{ ml: 1 }}
             >
-              Planner
-            </Button>
-          </Box>
-          <Typography sx={{ color: "common.white", mr: 1 }}>
-            Hello, {displayName}
-          </Typography>
-          <IconButton color="inherit" onClick={handleLogout}>
-            <LogoutIcon />
-          </IconButton>
-          <IconButton
-            color="inherit"
-            onClick={() => setDarkMode((d) => !d)}
-            sx={{ ml: 1 }}
-          >
-            {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Toolbar>
+        </AppBar>
 
-      <Box sx={{ p: 2, height: "calc(100vh - 64px)", overflow: "auto" }}>
-        {view === "catalog" ? (
-          <CourseCatalog
-            courses={courses}
-            planCodes={planCodes}
-            onAddCourse={addCourse}
-            onRemoveCourse={removeCourse}
-          />
-        ) : (
-          <Planner
-            plan={plan}
-            coursesMap={coursesMap}
-            onRemoveCourse={removeCourse}
-            onToggleComplete={toggleComplete}
-          />
-        )}
+        <Container
+          maxWidth="xl"
+          sx={{ py: { xs: 3, md: 5 }, minHeight: "calc(100vh - 64px)" }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2, md: 3 },
+              minHeight: "70vh",
+              borderRadius: 4,
+              backdropFilter: "blur(18px)",
+              backgroundColor: (theme) =>
+                alpha(theme.palette.background.paper, darkMode ? 0.25 : 0.85),
+              border: (theme) =>
+                `1px solid ${alpha(theme.palette.divider, darkMode ? 0.4 : 0.3)}`,
+              boxShadow: (theme) =>
+                `0 25px 60px ${alpha(
+                  theme.palette.common.black,
+                  darkMode ? 0.25 : 0.08
+                )}`,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {view === "catalog" ? (
+              <CourseCatalog
+                courses={courses}
+                planCodes={planCodes}
+                onAddCourse={addCourse}
+                onRemoveCourse={removeCourse}
+              />
+            ) : (
+              <Planner
+                plan={plan}
+                coursesMap={coursesMap}
+                onRemoveCourse={removeCourse}
+                onToggleComplete={toggleComplete}
+              />
+            )}
+          </Paper>
+        </Container>
       </Box>
     </ThemeProvider>
   );
