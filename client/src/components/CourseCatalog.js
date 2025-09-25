@@ -355,7 +355,7 @@ export default function CourseCatalog({
           sx={{
             p: { xs: 2.5, md: 3 },
             borderRadius: 3,
-            position: "relative",
+            position: { xs: "relative", lg: "sticky" },
             overflow: "hidden",
             backdropFilter: "blur(18px)",
             background: (theme) =>
@@ -370,7 +370,6 @@ export default function CourseCatalog({
             width: { xs: "100%", lg: 320 },
             flexShrink: 0,
             alignSelf: { lg: "flex-start" },
-            position: { lg: "sticky" },
             top: { lg: 0 },
             maxHeight: { lg: "calc(100vh - 200px)" },
             display: "flex",
@@ -428,277 +427,276 @@ export default function CourseCatalog({
               variant="outlined"
               sx={{ alignSelf: "flex-start" }}
             />
-          </Stack>
 
-          <Divider sx={{ opacity: 0.6 }} />
+            <Divider sx={{ opacity: 0.6 }} />
 
-          <Stack spacing={1.25} sx={{ flexGrow: 1, minHeight: 0 }}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Requirement checklist
-            </Typography>
-            <List
-              dense
-              sx={{
-                borderRadius: 2.5,
-                overflow: "auto",
-                flex: 1,
-                minHeight: 0,
-                pr: 0.5,
-                pt: 0.5,
-                pb: 0.75,
-                position: "relative",
-              }}
-            >
-              {requirementProgress.length === 0 ? (
-                <ListItem>
-                  <ListItemText
-                    primary="No structured requirements loaded"
-                    primaryTypographyProps={{ color: "text.secondary" }}
-                  />
-                </ListItem>
-              ) : (
-                requirementProgress.map((req, idx) => (
-                  <ListItem
-                    key={`${req.description}-${idx}`}
-                    disableGutters
-                    sx={{
-                      mb: 1,
-                      px: 1.25,
-                      py: 1.1,
-                      borderRadius: 2,
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      gap: 0.75,
-                      bgcolor: (theme) =>
-                        alpha(theme.palette.background.paper, 0.55),
-                      border: (theme) =>
-                        `1px solid ${alpha(
-                          req.satisfied
-                            ? theme.palette.success.main
-                            : theme.palette.primary.main,
-                          req.satisfied ? 0.35 : 0.2
-                        )}`,
-                      boxShadow: (theme) =>
-                        `0 18px 32px ${alpha(
-                          req.satisfied
-                            ? theme.palette.success.main
-                            : theme.palette.primary.main,
-                          0.14
-                        )}`,
-                      backdropFilter: "blur(12px)",
-                      transition: "transform 0.25s ease, box-shadow 0.25s ease",
-                      "&:hover": {
-                        transform: "translateY(-2px)",
-                        boxShadow: (theme) =>
-                          `0 24px 40px ${alpha(
+            <Stack spacing={1.25} sx={{ flexGrow: 1, minHeight: 0 }}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Requirement checklist
+              </Typography>
+              <List
+                dense
+                sx={{
+                  borderRadius: 2.5,
+                  overflow: "auto",
+                  flex: 1,
+                  minHeight: 0,
+                  pr: 0.5,
+                  pt: 0.5,
+                  pb: 0.75,
+                  position: "relative",
+                }}
+              >
+                {requirementProgress.length === 0 ? (
+                  <ListItem>
+                    <ListItemText
+                      primary="No structured requirements loaded"
+                      primaryTypographyProps={{ color: "text.secondary" }}
+                    />
+                  </ListItem>
+                ) : (
+                  requirementProgress.map((req, idx) => (
+                    <ListItem
+                      key={`${req.description}-${idx}`}
+                      disableGutters
+                      sx={{
+                        mb: 1,
+                        px: 1.25,
+                        py: 1.1,
+                        borderRadius: 2,
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 0.75,
+                        bgcolor: (theme) =>
+                          alpha(theme.palette.background.paper, 0.55),
+                        border: (theme) =>
+                          `1px solid ${alpha(
                             req.satisfied
                               ? theme.palette.success.main
                               : theme.palette.primary.main,
-                            0.22
+                            req.satisfied ? 0.35 : 0.2
                           )}`,
-                      },
-                    }}
-                  >
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
-                        {req.satisfied ? (
-                          <CheckCircleIcon color="success" fontSize="small" />
-                        ) : (
-                          <RadioButtonUncheckedIcon color="disabled" fontSize="small" />
-                        )}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={req.description}
-                        primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}
-                        secondaryTypographyProps={{ fontSize: 12 }}
-                        secondary={
-                          req.satisfied
-                            ? `Satisfied by ${presentableCode(req.matchedCode)}`
-                            : "Tap a course below to review and add it to your plan."
-                        }
-                      />
-                    </Stack>
-                    <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                      {req.options.map((optionCode) => {
-                        const normalized = normalizeCode(optionCode);
-                        const inPlan = planCodes.has(normalized);
-                        return (
-                          <Tooltip
-                            key={optionCode}
-                            title={
-                              inPlan
-                                ? "Already in your planner"
-                                : "Preview details and choose a term"
-                            }
-                          >
-                            <Chip
-                              clickable
-                              label={presentableCode(optionCode)}
-                              color={inPlan ? "success" : "primary"}
-                              variant={inPlan ? "filled" : "outlined"}
-                              icon={
-                                inPlan ? (
-                                  <CheckCircleIcon sx={{ fontSize: 18 }} />
-                                ) : undefined
+                        boxShadow: (theme) =>
+                          `0 18px 32px ${alpha(
+                            req.satisfied
+                              ? theme.palette.success.main
+                              : theme.palette.primary.main,
+                            0.14
+                          )}`,
+                        backdropFilter: "blur(12px)",
+                        transition: "transform 0.25s ease, box-shadow 0.25s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                          boxShadow: (theme) =>
+                            `0 24px 40px ${alpha(
+                              req.satisfied
+                                ? theme.palette.success.main
+                                : theme.palette.primary.main,
+                              0.22
+                            )}`,
+                        },
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
+                          {req.satisfied ? (
+                            <CheckCircleIcon color="success" fontSize="small" />
+                          ) : (
+                            <RadioButtonUncheckedIcon color="disabled" fontSize="small" />
+                          )}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={req.description}
+                          primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}
+                          secondaryTypographyProps={{ fontSize: 12 }}
+                          secondary={
+                            req.satisfied
+                              ? `Satisfied by ${presentableCode(req.matchedCode)}`
+                              : "Tap a course below to review and add it to your plan."
+                          }
+                        />
+                      </Stack>
+                      <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                        {req.options.map((optionCode) => {
+                          const normalized = normalizeCode(optionCode);
+                          const inPlan = planCodes.has(normalized);
+                          return (
+                            <Tooltip
+                              key={optionCode}
+                              title={
+                                inPlan
+                                  ? "Already in your planner"
+                                  : "Preview details and choose a term"
                               }
-                              onClick={() => handleRequirementChipClick(optionCode)}
-                              sx={{
-                                fontSize: 13,
-                                backdropFilter: "blur(6px)",
-                                boxShadow: (theme) =>
-                                  `0 12px 24px ${alpha(
-                                    inPlan
-                                      ? theme.palette.success.main
-                                      : theme.palette.primary.main,
-                                    0.22
-                                  )}`,
-                                borderColor: (theme) =>
-                                  alpha(
-                                    inPlan
-                                      ? theme.palette.success.main
-                                      : theme.palette.primary.main,
-                                    inPlan ? 0.45 : 0.35
-                                  ),
-                                "& .MuiChip-icon": {
-                                  color: (theme) => theme.palette.success.contrastText,
-                                },
-                              }}
-                            />
-                          </Tooltip>
-                        );
-                      })}
-                    </Stack>
-                  </ListItem>
-                ))
-              )}
-            </List>
-          </Stack>
-
-          <Divider sx={{ opacity: 0.6 }} />
-
-          <Stack spacing={1.75}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Catalog filters
-            </Typography>
-            <TextField
-              label="Search courses"
-              size="small"
-              value={rawSearch}
-              onChange={(e) => setRawSearch(e.target.value)}
-              placeholder="Search by code or title"
-            />
-            <FormControl size="small">
-              <InputLabel>Subject</InputLabel>
-              <Select
-                multiple
-                value={subjects}
-                onChange={(e) => setSubjects(e.target.value)}
-                input={<OutlinedInput label="Subject" />}
-                renderValue={(sel) => (
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {sel.map((s) => (
-                      <Chip key={s} label={s} size="small" />
-                    ))}
-                  </Box>
+                            >
+                              <Chip
+                                clickable
+                                label={presentableCode(optionCode)}
+                                color={inPlan ? "success" : "primary"}
+                                variant={inPlan ? "filled" : "outlined"}
+                                icon={
+                                  inPlan ? (
+                                    <CheckCircleIcon sx={{ fontSize: 18 }} />
+                                  ) : undefined
+                                }
+                                onClick={() => handleRequirementChipClick(optionCode)}
+                                sx={{
+                                  fontSize: 13,
+                                  backdropFilter: "blur(6px)",
+                                  boxShadow: (theme) =>
+                                    `0 12px 24px ${alpha(
+                                      inPlan
+                                        ? theme.palette.success.main
+                                        : theme.palette.primary.main,
+                                      0.22
+                                    )}`,
+                                  borderColor: (theme) =>
+                                    alpha(
+                                      inPlan
+                                        ? theme.palette.success.main
+                                        : theme.palette.primary.main,
+                                      inPlan ? 0.45 : 0.35
+                                    ),
+                                  "& .MuiChip-icon": {
+                                    color: (theme) => theme.palette.success.contrastText,
+                                  },
+                                }}
+                              />
+                            </Tooltip>
+                          );
+                        })}
+                      </Stack>
+                    </ListItem>
+                  ))
                 )}
-              >
-                {allSubjects.map((sub) => (
-                  <MenuItem key={sub} value={sub}>
-                    <Checkbox checked={subjects.includes(sub)} />
-                    <Typography sx={{ ml: 1 }}>{sub}</Typography>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={programOnly}
-                    onChange={(e) => setProgramOnly(e.target.checked)}
-                    size="small"
-                  />
-                }
-                label="Show tracked subjects"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={requiredOnly}
-                    onChange={(e) => setRequiredOnly(e.target.checked)}
-                    size="small"
-                  />
-                }
-                label="Show requirements only"
-              />
+              </List>
             </Stack>
-          </Stack>
 
-          <Divider sx={{ opacity: 0.6 }} />
+            <Divider sx={{ opacity: 0.6 }} />
 
-          <Stack spacing={1.5}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Custom requirement plan
-            </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button
-                component="label"
-                variant="contained"
-                size="small"
-                startIcon={<UploadIcon />}
-                disabled={savingPlan}
-              >
-                Upload JSON
-                <input
-                  hidden
-                  type="file"
-                  accept="application/json"
-                  onChange={handlePlanUpload}
-                />
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<RestartAltIcon />}
-                onClick={resetPlan}
-                disabled={savingPlan}
-              >
-                Reset to default
-              </Button>
-            </Stack>
-            <Typography variant="caption" color="text.secondary" component="div">
-              Provide a JSON file with a
-              <Box component="code" sx={{ px: 0.5 }}>
-                name
-              </Box>
-              field, optional
-              <Box component="code" sx={{ px: 0.5 }}>
-                relevantSubjects
-              </Box>
-              , and a
-              <Box component="code" sx={{ px: 0.5 }}>
-                requirements
-              </Box>
-              array. Each requirement should include a description and a list of
-              course codes.
-            </Typography>
-            {uploadError && <Alert severity="error">{uploadError}</Alert>}
-            {!uploadError && planSyncError && (
-              <Alert severity="error">{planSyncError}</Alert>
-            )}
-            {!planSyncError && (
-              <Typography variant="caption" color="text.secondary">
-                {savingPlan
-                  ? "Saving your requirement plan..."
-                  : planSyncLoading
-                  ? "Loading your saved requirement plan..."
-                  : lastSyncedAt
-                  ? `Last saved ${new Date(lastSyncedAt).toLocaleString()}`
-                  : "Changes save to your account automatically."}
+            <Stack spacing={1.75}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Catalog filters
               </Typography>
-            )}
-          </Stack>
-        </Stack>
+              <TextField
+                label="Search courses"
+                size="small"
+                value={rawSearch}
+                onChange={(e) => setRawSearch(e.target.value)}
+                placeholder="Search by code or title"
+              />
+              <FormControl size="small">
+                <InputLabel>Subject</InputLabel>
+                <Select
+                  multiple
+                  value={subjects}
+                  onChange={(e) => setSubjects(e.target.value)}
+                  input={<OutlinedInput label="Subject" />}
+                  renderValue={(sel) => (
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      {sel.map((s) => (
+                        <Chip key={s} label={s} size="small" />
+                      ))}
+                    </Box>
+                  )}
+                >
+                  {allSubjects.map((sub) => (
+                    <MenuItem key={sub} value={sub}>
+                      <Checkbox checked={subjects.includes(sub)} />
+                      <Typography sx={{ ml: 1 }}>{sub}</Typography>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={programOnly}
+                      onChange={(e) => setProgramOnly(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label="Show tracked subjects"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={requiredOnly}
+                      onChange={(e) => setRequiredOnly(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label="Show requirements only"
+                />
+              </Stack>
+            </Stack>
+
+            <Divider sx={{ opacity: 0.6 }} />
+
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Custom requirement plan
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button
+                  component="label"
+                  variant="contained"
+                  size="small"
+                  startIcon={<UploadIcon />}
+                  disabled={savingPlan}
+                >
+                  Upload JSON
+                  <input
+                    hidden
+                    type="file"
+                    accept="application/json"
+                    onChange={handlePlanUpload}
+                  />
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<RestartAltIcon />}
+                  onClick={resetPlan}
+                  disabled={savingPlan}
+                >
+                  Reset to default
+                </Button>
+              </Stack>
+              <Typography variant="caption" color="text.secondary" component="div">
+                Provide a JSON file with a
+                <Box component="code" sx={{ px: 0.5 }}>
+                  name
+                </Box>
+                field, optional
+                <Box component="code" sx={{ px: 0.5 }}>
+                  relevantSubjects
+                </Box>
+                , and a
+                <Box component="code" sx={{ px: 0.5 }}>
+                  requirements
+                </Box>
+                array. Each requirement should include a description and a list of
+                course codes.
+              </Typography>
+              {uploadError && <Alert severity="error">{uploadError}</Alert>}
+              {!uploadError && planSyncError && (
+                <Alert severity="error">{planSyncError}</Alert>
+              )}
+              {!planSyncError && (
+                <Typography variant="caption" color="text.secondary">
+                  {savingPlan
+                    ? "Saving your requirement plan..."
+                    : planSyncLoading
+                    ? "Loading your saved requirement plan..."
+                    : lastSyncedAt
+                    ? `Last saved ${new Date(lastSyncedAt).toLocaleString()}`
+                    : "Changes save to your account automatically."}
+                </Typography>
+              )}
+            </Stack>
+            </Stack>
         </Paper>
 
         <Paper
