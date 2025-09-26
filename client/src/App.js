@@ -32,7 +32,57 @@ import CourseCatalog from "./components/CourseCatalog";
 import Planner from "./components/Planner";
 import Login from "./components/Login";
 import InfoHub from "./components/InfoHub";
-import { DEFAULT_PLAN } from "./utils/programPlan";
+import { DEFAULT_PLAN, normalizePlan } from "./utils/programPlan";
+
+const LOCAL_PLAN_STORAGE_PREFIX = "uw-course-planner.program-plan";
+
+const makeLocalPlanKey = (userId) =>
+  `${LOCAL_PLAN_STORAGE_PREFIX}:${userId ?? "guest"}`;
+
+const loadPlanFromLocalStorage = (userId) => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(makeLocalPlanKey(userId));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || !parsed.plan) return null;
+
+    return {
+      plan: normalizePlan(parsed.plan),
+      updatedAt: parsed.updatedAt ?? null,
+    };
+  } catch (err) {
+    console.error("Failed to read cached requirement plan", err);
+    return null;
+  }
+};
+
+const savePlanToLocalStorage = (userId, plan, updatedAt) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const normalized = normalizePlan(plan);
+    window.localStorage.setItem(
+      makeLocalPlanKey(userId),
+      JSON.stringify({ plan: normalized, updatedAt })
+    );
+  } catch (err) {
+    console.error("Failed to cache requirement plan", err);
+  }
+};
+
+const isMissingTableError = (error) => {
+  if (!error) return false;
+  if (typeof error === "object") {
+    if ("code" in error && error.code === "PGRST301") return true;
+    if ("status" in error && Number(error.status) === 404) return true;
+    const message = String(error.message || "").toLowerCase();
+    if (message.includes("does not exist")) return true;
+  }
+  return false;
+};
 
 function App() {
   const [user, setUser] = useState(null);
@@ -49,6 +99,7 @@ function App() {
   const [planTemplateSaving, setPlanTemplateSaving] = useState(false);
   const [planTemplateError, setPlanTemplateError] = useState(null);
   const [planTemplateUpdatedAt, setPlanTemplateUpdatedAt] = useState(null);
+  const [planStorageMode, setPlanStorageMode] = useState("supabase");
 
   const theme = useMemo(() => {
     const baseTheme = createTheme({
@@ -205,6 +256,18 @@ function App() {
     }, {});
   }, [courses]);
 
+  const applyCachedPlan = useCallback((userId) => {
+    const cached = loadPlanFromLocalStorage(userId);
+    if (cached?.plan) {
+      setProgramPlan(cached.plan);
+      setPlanTemplateUpdatedAt(cached.updatedAt);
+    } else {
+      setProgramPlan(DEFAULT_PLAN);
+      setPlanTemplateUpdatedAt(null);
+    }
+    setPlanTemplateError(null);
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) setUser(data.session.user);
@@ -251,58 +314,109 @@ function App() {
 
   const persistProgramPlan = useCallback(
     async (nextPlan) => {
-      const targetUserId = user?.id;
-      if (!targetUserId) return;
+      const targetUserId = user?.id ?? null;
+      const normalizedPlan = normalizePlan(nextPlan);
 
       setPlanTemplateSaving(true);
       setPlanTemplateError(null);
-      const payload = {
-        user_id: targetUserId,
-        plan: nextPlan,
-        updated_at: new Date().toISOString(),
+
+      const applyPlanState = (planToApply, updatedAt) => {
+        if (targetUserId && user?.id !== targetUserId) {
+          return { plan: planToApply, updated_at: updatedAt };
+        }
+
+        setProgramPlan(planToApply);
+        setPlanTemplateUpdatedAt(updatedAt);
+        setPlanTemplateError(null);
+        return { plan: planToApply, updated_at: updatedAt };
+      };
+
+      const saveLocally = (updatedAtOverride) => {
+        const timestamp = updatedAtOverride ?? new Date().toISOString();
+        savePlanToLocalStorage(targetUserId, normalizedPlan, timestamp);
+        return applyPlanState(normalizedPlan, timestamp);
       };
 
       try {
+        if (!targetUserId || planStorageMode === "local") {
+          return saveLocally();
+        }
+
+        const payload = {
+          user_id: targetUserId,
+          plan: normalizedPlan,
+          updated_at: new Date().toISOString(),
+        };
+
         const { data, error } = await supabase
           .from("user_program_plans")
           .upsert(payload, { onConflict: "user_id" })
           .select("plan, updated_at")
           .single();
 
-        if (error) throw error;
-        if (user?.id !== targetUserId) return;
+        if (error) {
+          if (isMissingTableError(error)) {
+            setPlanStorageMode("local");
+            return saveLocally(payload.updated_at);
+          }
+          throw error;
+        }
 
-        setProgramPlan(data?.plan ?? nextPlan);
-        setPlanTemplateUpdatedAt(data?.updated_at ?? payload.updated_at);
-        setPlanTemplateError(null);
+        const persistedPlan = data?.plan ? normalizePlan(data.plan) : normalizedPlan;
+        const updatedAt = data?.updated_at ?? payload.updated_at;
+        savePlanToLocalStorage(targetUserId, persistedPlan, updatedAt);
+        return applyPlanState(persistedPlan, updatedAt);
       } catch (err) {
         console.error("Error saving requirement plan:", err);
-        if (user?.id === targetUserId) {
+        if (!targetUserId || user?.id === targetUserId) {
           setPlanTemplateError(
             "We couldn't save your requirement plan. Please try again."
           );
         }
         throw err;
       } finally {
-        if (user?.id === targetUserId) {
+        if (!targetUserId || user?.id === targetUserId) {
           setPlanTemplateSaving(false);
         }
       }
     },
-    [user]
+    [user, planStorageMode]
   );
 
   useEffect(() => {
-    if (!user?.id) {
+    const userId = user?.id ?? null;
+
+    if (!userId) {
       setProgramPlan(null);
       setPlanTemplateUpdatedAt(null);
       setPlanTemplateError(null);
       setPlanTemplateLoading(false);
       setPlanTemplateSaving(false);
+      setPlanStorageMode("supabase");
       return;
     }
 
     let isActive = true;
+    const finishLoading = () => {
+      if (isActive) {
+        setPlanTemplateLoading(false);
+      }
+    };
+
+    const loadFromCache = () => {
+      if (!isActive) return;
+      applyCachedPlan(userId);
+    };
+
+    if (planStorageMode === "local") {
+      setPlanTemplateLoading(true);
+      loadFromCache();
+      finishLoading();
+      return () => {
+        isActive = false;
+      };
+    }
+
     setPlanTemplateLoading(true);
     setPlanTemplateError(null);
 
@@ -310,12 +424,21 @@ function App() {
       const { data, error } = await supabase
         .from("user_program_plans")
         .select("plan, updated_at")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (!isActive) return;
 
       if (error) {
+        if (isMissingTableError(error)) {
+          setPlanStorageMode("local");
+          const cached = loadPlanFromLocalStorage(userId);
+          if (!cached?.plan) {
+            savePlanToLocalStorage(userId, DEFAULT_PLAN, null);
+          }
+          loadFromCache();
+          return;
+        }
         console.error("Error loading requirement plan:", error);
         setPlanTemplateError(
           "We couldn't load your requirement plan. Try again in a moment."
@@ -326,8 +449,11 @@ function App() {
       }
 
       if (data?.plan) {
-        setProgramPlan(data.plan);
-        setPlanTemplateUpdatedAt(data.updated_at ?? null);
+        const normalized = normalizePlan(data.plan);
+        setProgramPlan(normalized);
+        const updatedAt = data.updated_at ?? null;
+        setPlanTemplateUpdatedAt(updatedAt);
+        savePlanToLocalStorage(userId, normalized, updatedAt);
       } else {
         try {
           await persistProgramPlan(DEFAULT_PLAN);
@@ -343,14 +469,17 @@ function App() {
           "We couldn't load your requirement plan. Try again in a moment."
         );
       })
-      .finally(() => {
-        if (isActive) setPlanTemplateLoading(false);
-      });
+      .finally(finishLoading);
 
     return () => {
       isActive = false;
     };
-  }, [user, persistProgramPlan]);
+  }, [
+    user,
+    persistProgramPlan,
+    planStorageMode,
+    applyCachedPlan,
+  ]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -361,6 +490,7 @@ function App() {
     setPlanTemplateError(null);
     setPlanTemplateLoading(false);
     setPlanTemplateSaving(false);
+    setPlanStorageMode("supabase");
   };
 
   if (!user) {
