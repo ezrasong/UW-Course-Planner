@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Box,
   TextField,
@@ -97,21 +97,31 @@ export default function Planner({
     });
   }, [filteredPlan]);
 
-  const summary = useMemo(() => {
-    const total = filteredPlan.length;
-    const completed = filteredPlan.filter((item) => item.completed).length;
-    const estimatedUnits = filteredPlan.reduce((sum, item) => {
-      const units = parseFloat(coursesMap[item.course_code]?.units);
-      return Number.isFinite(units) ? sum + units : sum;
-    }, 0);
-    return {
-      total,
-      completed,
-      remaining: total - completed,
-      percent: total ? Math.round((completed / total) * 100) : 0,
-      units: Math.round(estimatedUnits * 10) / 10,
-    };
-  }, [filteredPlan, coursesMap]);
+  const computeSummary = useCallback(
+    (items) => {
+      const total = items.length;
+      const completed = items.filter((item) => item.completed).length;
+      const estimatedUnits = items.reduce((sum, item) => {
+        const units = parseFloat(coursesMap[item.course_code]?.units);
+        return Number.isFinite(units) ? sum + units : sum;
+      }, 0);
+
+      return {
+        total,
+        completed,
+        remaining: total - completed,
+        percent: total ? Math.round((completed / total) * 100) : 0,
+        units: Math.round(estimatedUnits * 10) / 10,
+      };
+    },
+    [coursesMap]
+  );
+
+  const summary = useMemo(() => computeSummary(plan), [computeSummary, plan]);
+  const visibleSummary = useMemo(
+    () => computeSummary(filteredPlan),
+    [computeSummary, filteredPlan]
+  );
 
   const openDialog = (code) => {
     setSelectedCode(code);
@@ -185,6 +195,12 @@ export default function Planner({
               Planned courses
             </Typography>
             <Typography variant="h4">{summary.total || 0}</Typography>
+            {filtersActive && (
+              <Typography variant="caption" color="text.secondary">
+                Showing {visibleSummary.total} matching course
+                {visibleSummary.total === 1 ? "" : "s"}.
+              </Typography>
+            )}
           </Stack>
           <Stack spacing={1} sx={{ minWidth: { sm: 240 } }}>
             <Typography variant="overline" color="text.secondary">
@@ -198,6 +214,13 @@ export default function Planner({
             <Typography variant="body2" color="text.secondary">
               {summary.completed} completed • {summary.remaining} remaining
             </Typography>
+            {filtersActive && (
+              <Typography variant="caption" color="text.secondary">
+                Filtered view: {visibleSummary.completed} completed •
+                {" "}
+                {visibleSummary.remaining} remaining
+              </Typography>
+            )}
           </Stack>
           <Stack spacing={0.5}>
             <Typography variant="overline" color="text.secondary">
