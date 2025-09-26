@@ -1,7 +1,4 @@
-import compMathPlan from "../data/comp_math_plan.json";
-
-export const DEFAULT_PLAN_NAME = "Computational Mathematics";
-export const DEFAULT_SUBJECTS = ["MATH", "AMATH", "CO", "CS", "PMATH", "STAT"];
+export const DEFAULT_PLAN_NAME = "Custom Plan";
 
 export function normalizePlan(rawPlan = {}) {
   const requirements = Array.isArray(rawPlan.requirements)
@@ -39,10 +36,13 @@ export function normalizePlan(rawPlan = {}) {
     name:
       (typeof rawPlan.name === "string" && rawPlan.name.trim()) ||
       DEFAULT_PLAN_NAME,
-    relevantSubjects:
-      relevantSubjects.length > 0 ? relevantSubjects : DEFAULT_SUBJECTS,
+    relevantSubjects,
     requirements,
   };
 }
 
-export const DEFAULT_PLAN = normalizePlan(compMathPlan);
+export const DEFAULT_PLAN = normalizePlan({
+  name: DEFAULT_PLAN_NAME,
+  relevantSubjects: [],
+  requirements: [],
+});

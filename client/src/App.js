@@ -750,7 +750,10 @@ function App() {
               color: (theme) => theme.palette.text.primary,
             }}
           >
-            <Toolbar disableGutters sx={{ minHeight: 72 }}>
+          <Toolbar
+            disableGutters
+            sx={{ minHeight: 64, height: 64, alignItems: "center" }}
+          >
             <Container
               maxWidth="xl"
               sx={{
