@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useRef,
+  useDeferredValue,
 } from "react";
 import {
   Box,
@@ -75,10 +76,8 @@ export default function CourseCatalog({
   const [uploadError, setUploadError] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [isDraggingFile, setIsDraggingFile] = useState(false);
-  const [sidebarMaxHeight, setSidebarMaxHeight] = useState(null);
   const dropZoneRef = useRef(null);
   const fileInputRef = useRef(null);
-  const sidebarRef = useRef(null);
 
   const debouncedSetSearch = useMemo(
     () => debounce((val) => setSearch(val), 300),
@@ -175,6 +174,8 @@ export default function CourseCatalog({
 
   const selectedSubjectsSet = useMemo(() => new Set(subjects), [subjects]);
 
+  const deferredSearch = useDeferredValue(search);
+
   const courseMap = useMemo(() => {
     return courses.reduce((map, course) => {
       const key = course.subjectCode + course.catalogNumber;
@@ -183,48 +184,51 @@ export default function CourseCatalog({
     }, new Map());
   }, [courses]);
 
-  const rows = useMemo(
-    () =>
-      courses
-        .filter((c) => {
-          const key = c.subjectCode + c.catalogNumber;
+  const rows = useMemo(() => {
+    const query = deferredSearch.trim().toLowerCase();
+    const hasSubjectFilter = selectedSubjectsSet.size > 0;
+
+    return courses
+      .filter((c) => {
+        const key = c.subjectCode + c.catalogNumber;
+        if (
+          programOnly &&
+          !requiredSet.has(key) &&
+          !programSubjects.has(c.subjectCode)
+        ) {
+          return false;
+        }
+        if (requiredOnly && !requiredSet.has(key)) return false;
+        if (hasSubjectFilter && !selectedSubjectsSet.has(c.subjectCode)) {
+          return false;
+        }
+        if (query) {
+          const codeStr = `${c.subjectCode} ${c.catalogNumber}`.toLowerCase();
           if (
-            programOnly &&
-            !requiredSet.has(key) &&
-            !programSubjects.has(c.subjectCode)
-          )
+            !codeStr.includes(query) &&
+            !c.title.toLowerCase().includes(query)
+          ) {
             return false;
-          if (requiredOnly && !requiredSet.has(key)) return false;
-          if (subjects.length && !subjects.includes(c.subjectCode))
-            return false;
-          const q = search.trim().toLowerCase();
-          if (q) {
-            const codeStr = `${c.subjectCode} ${c.catalogNumber}`.toLowerCase();
-            if (
-              !codeStr.includes(q) &&
-              !c.title.toLowerCase().includes(q)
-            )
-              return false;
           }
-          return true;
-        })
-        .map((c) => ({
-          id: c.subjectCode + c.catalogNumber,
-          code: `${c.subjectCode} ${c.catalogNumber}`,
-          title: c.title,
-          prereq: c.requirementsDescription || "None",
-          raw: c,
-        })),
-    [
-      courses,
-      programOnly,
-      requiredOnly,
-      subjects,
-      search,
-      requiredSet,
-      programSubjects,
-    ]
-  );
+        }
+        return true;
+      })
+      .map((c) => ({
+        id: c.subjectCode + c.catalogNumber,
+        code: `${c.subjectCode} ${c.catalogNumber}`,
+        title: c.title,
+        prereq: c.requirementsDescription || "None",
+        raw: c,
+      }));
+  }, [
+    courses,
+    deferredSearch,
+    programOnly,
+    programSubjects,
+    requiredOnly,
+    requiredSet,
+    selectedSubjectsSet,
+  ]);
 
   const visibleCount = rows.length;
   const totalCatalogCount = courses.length;
@@ -499,45 +503,6 @@ export default function CourseCatalog({
     [savingPlan]
   );
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    let frame = null;
-
-    const updateSidebarMaxHeight = () => {
-      if (!sidebarRef.current) return;
-      if (frame) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        if (!sidebarRef.current) return;
-        const rect = sidebarRef.current.getBoundingClientRect();
-        const margin = 24;
-        const available = window.innerHeight - rect.top - margin;
-        const next = Math.max(Math.round(available), 360);
-        setSidebarMaxHeight((prev) => {
-          if (prev === null) return next;
-          return Math.abs(prev - next) > 1 ? next : prev;
-        });
-      });
-    };
-
-    updateSidebarMaxHeight();
-    window.addEventListener("resize", updateSidebarMaxHeight);
-    window.addEventListener("scroll", updateSidebarMaxHeight, { passive: true });
-
-    let observer;
-    if (typeof ResizeObserver !== "undefined" && sidebarRef.current) {
-      observer = new ResizeObserver(() => updateSidebarMaxHeight());
-      observer.observe(sidebarRef.current);
-    }
-
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", updateSidebarMaxHeight);
-      window.removeEventListener("scroll", updateSidebarMaxHeight);
-      if (observer) observer.disconnect();
-    };
-  }, []);
-
   const resetPlan = useCallback(async () => {
     setPlanData(DEFAULT_PLAN);
     setUploadError(null);
@@ -604,15 +569,13 @@ export default function CourseCatalog({
         }}
       >
         <Paper
-          ref={sidebarRef}
           sx={{
             p: { xs: 2.5, md: 3 },
             borderRadius: 3,
             position: { xs: "relative", lg: "sticky" },
-            overflow: "visible",
-            overflowY: {
-              lg: sidebarMaxHeight ? "auto" : "visible",
-            },
+            top: { lg: 24 },
+            overflow: "hidden",
+            overflowY: { xs: "visible", lg: "auto" },
             backdropFilter: "blur(14px)",
             background: (theme) =>
               `linear-gradient(150deg, ${alpha(
@@ -628,13 +591,7 @@ export default function CourseCatalog({
             },
             flexShrink: 0,
             alignSelf: { lg: "flex-start" },
-            top: { lg: 0 },
-            maxHeight: {
-              lg: sidebarMaxHeight
-                ? `${sidebarMaxHeight}px`
-                : "calc(100vh - 160px)",
-            },
-            transition: "max-height 0.2s ease",
+            maxHeight: { lg: "calc(100vh - 96px)" },
             display: "flex",
             flexDirection: "column",
             gap: 0,
