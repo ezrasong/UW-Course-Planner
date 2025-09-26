@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Box,
   TextField,
@@ -40,6 +46,7 @@ import {
   RestartAlt as RestartAltIcon,
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
+  FilterAltOff as FilterAltOffIcon,
 } from "@mui/icons-material";
 import { DEFAULT_PLAN, normalizePlan } from "../utils/programPlan";
 
@@ -69,6 +76,10 @@ export default function CourseCatalog({
     storedPlan ? normalizePlan(storedPlan) : DEFAULT_PLAN
   );
   const [uploadError, setUploadError] = useState(null);
+  const [uploadSuccess, setUploadSuccess] = useState("");
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dropZoneRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const debouncedSetSearch = useMemo(
     () => debounce((val) => setSearch(val), 300),
@@ -86,7 +97,15 @@ export default function CourseCatalog({
     } else {
       setPlanData(DEFAULT_PLAN);
     }
+    setUploadError(null);
+    setUploadSuccess("");
   }, [storedPlan, planSyncLoading]);
+
+  useEffect(() => {
+    if (planSyncError) {
+      setUploadSuccess("");
+    }
+  }, [planSyncError]);
 
   const normalizeCode = (code = "") => code.replace(/\s+/g, "");
 
@@ -128,6 +147,10 @@ export default function CourseCatalog({
   const satisfiedCount = requirementProgress.filter((req) => req.satisfied).length;
   const completionPercent = totalRequirements
     ? Math.round((satisfiedCount / totalRequirements) * 100)
+    : 0;
+
+  const trackedSubjectsCount = planData.relevantSubjects
+    ? planData.relevantSubjects.length
     : 0;
 
   const allSubjects = useMemo(
@@ -193,6 +216,14 @@ export default function CourseCatalog({
     subjects.length > 0 ||
     Boolean(search.trim());
 
+  const clearFilters = useCallback(() => {
+    setProgramOnly(false);
+    setRequiredOnly(false);
+    setSubjects([]);
+    setRawSearch("");
+    setSearch("");
+  }, []);
+
   const NoRowsOverlay = () => (
     <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ p: 4 }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -252,51 +283,156 @@ export default function CourseCatalog({
     },
   ];
 
+  const planNameFromFile = useCallback((fileName = "") => {
+    const base = fileName.replace(/\.[^/.]+$/, "");
+    return base
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+      .trim();
+  }, []);
+
+  const parseAndLoadPlan = useCallback(
+    (file) => {
+      if (!file) return Promise.resolve();
+
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+
+        reader.onload = async (e) => {
+          try {
+            const text = typeof e.target?.result === "string" ? e.target.result : "";
+            const parsed = JSON.parse(text);
+
+            if (!parsed || typeof parsed !== "object") {
+              throw new Error("Plan file must contain a JSON object");
+            }
+
+            const normalized = normalizePlan({
+              ...parsed,
+              name:
+                typeof parsed?.name === "string" && parsed.name.trim()
+                  ? parsed.name.trim()
+                  : planNameFromFile(file.name) || DEFAULT_PLAN.name,
+            });
+
+            if (!Array.isArray(normalized.requirements) || !normalized.requirements.length) {
+              throw new Error("Plan must include at least one requirement");
+            }
+
+            setPlanData(normalized);
+            setUploadError(null);
+            setUploadSuccess(`Loaded ${normalized.name} from ${file.name}.`);
+
+            if (onPlanSave) {
+              await onPlanSave(normalized);
+            }
+          } catch (err) {
+            console.error("Failed to load custom plan", err);
+            setUploadSuccess("");
+            setUploadError(
+              err instanceof SyntaxError
+                ? "We couldn't parse that JSON file. Please fix any syntax issues and try again."
+                : err?.message ||
+                  "Unable to read or save that file. Make sure it's valid JSON with a requirements array."
+            );
+          } finally {
+            resolve();
+          }
+        };
+
+        reader.onerror = () => {
+          console.error("Failed to read custom plan", reader.error);
+          setUploadSuccess("");
+          setUploadError(
+            "Something went wrong while reading that file. Please try again or choose a different file."
+          );
+          resolve();
+        };
+
+        reader.readAsText(file);
+      });
+    },
+    [onPlanSave, planNameFromFile]
+  );
+
   const handlePlanUpload = useCallback(
     async (event) => {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const parsed = JSON.parse(e.target.result);
-          const normalized = normalizePlan({
-            ...parsed,
-            name:
-              parsed?.name || file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
-          });
-          if (!normalized.requirements.length) {
-            throw new Error("Plan must include at least one requirement");
-          }
-          setPlanData(normalized);
-          setUploadError(null);
-          if (onPlanSave) {
-            await onPlanSave(normalized);
-          }
-        } catch (err) {
-          console.error("Failed to load custom plan", err);
-          setUploadError(
-            "Unable to read or save that file. Make sure it's valid JSON with a requirements array."
-          );
-        }
-      };
-      reader.readAsText(file);
+      await parseAndLoadPlan(file);
+
       // Allow re-uploading the same file by clearing the input value
       event.target.value = "";
     },
-    [onPlanSave]
+    [parseAndLoadPlan]
+  );
+
+  const handleDrop = useCallback(
+    async (event) => {
+      event.preventDefault();
+      setIsDraggingFile(false);
+
+      if (savingPlan) return;
+
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+
+      await parseAndLoadPlan(file);
+    },
+    [parseAndLoadPlan, savingPlan]
+  );
+
+  const handleDragOver = useCallback(
+    (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = savingPlan ? "none" : "copy";
+      if (savingPlan) return;
+      setIsDraggingFile(true);
+    },
+    [savingPlan]
+  );
+
+  const handleDragLeave = useCallback((event) => {
+    event.preventDefault();
+    if (
+      dropZoneRef.current &&
+      event.relatedTarget &&
+      dropZoneRef.current.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    setIsDraggingFile(false);
+  }, []);
+
+  const handleBrowseClick = useCallback(() => {
+    if (savingPlan) return;
+    fileInputRef.current?.click();
+  }, [savingPlan]);
+
+  const handleDropZoneKeyDown = useCallback(
+    (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        if (savingPlan) return;
+        fileInputRef.current?.click();
+      }
+    },
+    [savingPlan]
   );
 
   const resetPlan = useCallback(async () => {
     setPlanData(DEFAULT_PLAN);
     setUploadError(null);
+    setUploadSuccess("Reverted to the default requirement plan.");
     if (onPlanSave) {
       try {
         await onPlanSave(DEFAULT_PLAN);
       } catch (err) {
         console.error("Failed to reset plan", err);
         setUploadError("We couldn't save the default plan. Please try again.");
+        setUploadSuccess("");
       }
     }
   }, [onPlanSave]);
@@ -357,53 +493,26 @@ export default function CourseCatalog({
             borderRadius: 3,
             position: { xs: "relative", lg: "sticky" },
             overflow: "hidden",
-            backdropFilter: "blur(18px)",
+            backdropFilter: "blur(14px)",
             background: (theme) =>
-              `linear-gradient(160deg, ${alpha(
+              `linear-gradient(150deg, ${alpha(
                 theme.palette.background.paper,
-                0.65
-              )} 0%, ${alpha(theme.palette.background.paper, 0.42)} 100%)`,
+                0.92
+              )} 0%, ${alpha(theme.palette.background.default, 0.82)} 100%)`,
             border: (theme) =>
-              `1px solid ${alpha(theme.palette.divider, 0.35)}`,
-            boxShadow: (theme) =>
-              `0 30px 70px ${alpha(theme.palette.common.black, 0.22)}`,
+              `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+            boxShadow: (theme) => theme.shadows[12],
             width: { xs: "100%", lg: 320 },
             flexShrink: 0,
             alignSelf: { lg: "flex-start" },
             top: { lg: 0 },
-            maxHeight: { lg: "calc(100vh - 200px)" },
+            maxHeight: { lg: "calc(100vh - 180px)" },
             display: "flex",
             flexDirection: "column",
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              inset: -60,
-              background: (theme) =>
-                `radial-gradient(55% 55% at 15% 20%, ${alpha(
-                  theme.palette.primary.light,
-                  0.25
-                )} 0%, transparent 65%)`,
-              filter: "blur(80px)",
-              opacity: 0.9,
-            },
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              inset: 0,
-              borderRadius: "inherit",
-              background: (theme) =>
-                `linear-gradient(120deg, ${alpha(
-                  theme.palette.common.white,
-                  0.08
-                )} 0%, transparent 45%, ${alpha(
-                  theme.palette.primary.main,
-                  0.12
-                )} 100%)`,
-              pointerEvents: "none",
-            },
+            gap: 0,
           }}
         >
-          <Stack spacing={2.5} sx={{ position: "relative", flex: 1, minHeight: 0 }}>
+          <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
             <Typography variant="overline" color="text.secondary">
               Program Planner
             </Typography>
@@ -422,10 +531,12 @@ export default function CourseCatalog({
               </Typography>
             </Stack>
             <Chip
-              label={`${planData.relevantSubjects.length} tracked subjects`}
+              label={`${trackedSubjectsCount} tracked subject${
+                trackedSubjectsCount === 1 ? "" : "s"
+              }`}
               size="small"
               variant="outlined"
-              sx={{ alignSelf: "flex-start" }}
+              sx={{ alignSelf: "flex-start", fontWeight: 500 }}
             />
 
             <Divider sx={{ opacity: 0.6 }} />
@@ -468,27 +579,26 @@ export default function CourseCatalog({
                         alignItems: "flex-start",
                         gap: 0.75,
                         bgcolor: (theme) =>
-                          alpha(theme.palette.background.paper, 0.55),
+                          alpha(theme.palette.background.paper, req.satisfied ? 0.75 : 0.68),
                         border: (theme) =>
                           `1px solid ${alpha(
                             req.satisfied
                               ? theme.palette.success.main
                               : theme.palette.primary.main,
-                            req.satisfied ? 0.35 : 0.2
+                            req.satisfied ? 0.45 : 0.35
                           )}`,
                         boxShadow: (theme) =>
-                          `0 18px 32px ${alpha(
+                          `0 10px 26px ${alpha(
                             req.satisfied
                               ? theme.palette.success.main
                               : theme.palette.primary.main,
-                            0.14
+                            0.12
                           )}`,
-                        backdropFilter: "blur(12px)",
-                        transition: "transform 0.25s ease, box-shadow 0.25s ease",
+                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
                         "&:hover": {
-                          transform: "translateY(-2px)",
+                          transform: "translateY(-1px)",
                           boxShadow: (theme) =>
-                            `0 24px 40px ${alpha(
+                            `0 18px 32px ${alpha(
                               req.satisfied
                                 ? theme.palette.success.main
                                 : theme.palette.primary.main,
@@ -542,7 +652,6 @@ export default function CourseCatalog({
                                 onClick={() => handleRequirementChipClick(optionCode)}
                                 sx={{
                                   fontSize: 13,
-                                  backdropFilter: "blur(6px)",
                                   boxShadow: (theme) =>
                                     `0 12px 24px ${alpha(
                                       inPlan
@@ -557,6 +666,10 @@ export default function CourseCatalog({
                                         : theme.palette.primary.main,
                                       inPlan ? 0.45 : 0.35
                                     ),
+                                  backgroundColor: (theme) =>
+                                    inPlan
+                                      ? alpha(theme.palette.success.main, 0.12)
+                                      : alpha(theme.palette.primary.main, 0.05),
                                   "& .MuiChip-icon": {
                                     color: (theme) => theme.palette.success.contrastText,
                                   },
@@ -630,6 +743,17 @@ export default function CourseCatalog({
                   label="Show requirements only"
                 />
               </Stack>
+              {filtersActive && (
+                <Button
+                  onClick={clearFilters}
+                  size="small"
+                  color="secondary"
+                  startIcon={<FilterAltOffIcon />}
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  Clear filters
+                </Button>
+              )}
             </Stack>
 
             <Divider sx={{ opacity: 0.6 }} />
@@ -638,22 +762,83 @@ export default function CourseCatalog({
               <Typography variant="subtitle2" color="text.secondary">
                 Custom requirement plan
               </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Box
+                ref={dropZoneRef}
+                role="button"
+                tabIndex={0}
+                onKeyDown={handleDropZoneKeyDown}
+                onClick={handleBrowseClick}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                aria-label="Upload a custom requirement plan JSON file"
+                sx={{
+                  position: "relative",
+                  borderRadius: 2,
+                  border: (theme) =>
+                    `1px dashed ${alpha(
+                      theme.palette.primary.main,
+                      isDraggingFile ? 0.85 : 0.4
+                    )}`,
+                  backgroundColor: (theme) =>
+                    alpha(
+                      theme.palette.primary.main,
+                      isDraggingFile ? 0.12 : 0.05
+                    ),
+                  color: "text.primary",
+                  px: 2.5,
+                  py: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 1,
+                  cursor: "pointer",
+                  outline: "none",
+                  transition: "border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease",
+                  transform: isDraggingFile ? "scale(1.01)" : "none",
+                  textAlign: "center",
+                  "&:focus-visible": {
+                    borderColor: (theme) => theme.palette.primary.main,
+                    boxShadow: (theme) =>
+                      `0 0 0 3px ${alpha(theme.palette.primary.main, 0.25)}`,
+                  },
+                }}
+              >
+                <UploadIcon color="primary" sx={{ fontSize: 32 }} />
+                <Stack spacing={0.5} alignItems="center">
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Drop your JSON file here
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    or click to browse from your computer
+                  </Typography>
+                </Stack>
                 <Button
-                  component="label"
                   variant="contained"
                   size="small"
-                  startIcon={<UploadIcon />}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleBrowseClick();
+                  }}
                   disabled={savingPlan}
+                  sx={{ mt: 1 }}
                 >
-                  Upload JSON
-                  <input
-                    hidden
-                    type="file"
-                    accept="application/json"
-                    onChange={handlePlanUpload}
-                  />
+                  Choose file
                 </Button>
+                <Typography variant="caption" color="text.secondary">
+                  JSON should include <Box component="code">name</Box>, optional
+                  <Box component="code">relevantSubjects</Box>, and a
+                  <Box component="code">requirements</Box> array.
+                </Typography>
+                <input
+                  ref={fileInputRef}
+                  hidden
+                  type="file"
+                  accept="application/json"
+                  onChange={handlePlanUpload}
+                />
+              </Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Button
                   variant="outlined"
                   size="small"
@@ -664,23 +849,10 @@ export default function CourseCatalog({
                   Reset to default
                 </Button>
               </Stack>
-              <Typography variant="caption" color="text.secondary" component="div">
-                Provide a JSON file with a
-                <Box component="code" sx={{ px: 0.5 }}>
-                  name
-                </Box>
-                field, optional
-                <Box component="code" sx={{ px: 0.5 }}>
-                  relevantSubjects
-                </Box>
-                , and a
-                <Box component="code" sx={{ px: 0.5 }}>
-                  requirements
-                </Box>
-                array. Each requirement should include a description and a list of
-                course codes.
-              </Typography>
               {uploadError && <Alert severity="error">{uploadError}</Alert>}
+              {!uploadError && uploadSuccess && (
+                <Alert severity="success">{uploadSuccess}</Alert>
+              )}
               {!uploadError && planSyncError && (
                 <Alert severity="error">{planSyncError}</Alert>
               )}
