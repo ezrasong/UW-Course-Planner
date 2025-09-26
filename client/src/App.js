@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import {
   ThemeProvider,
@@ -34,6 +34,57 @@ import Login from "./components/Login";
 import InfoHub from "./components/InfoHub";
 import { DEFAULT_PLAN } from "./utils/programPlan";
 
+const PROGRAM_PLAN_STORAGE_PREFIX = "uw-course-planner::program-plan";
+
+const getPlanStorageKey = (userId) =>
+  `${PROGRAM_PLAN_STORAGE_PREFIX}::${userId ?? "anonymous"}`;
+
+const isMissingProgramPlanTableError = (error) => {
+  if (!error) return false;
+
+  const code = error.code || error?.cause?.code;
+  if (code === "PGRST116" || code === "42P01") return true;
+
+  const status = error.status || error?.cause?.status;
+  if (status === 404) return true;
+
+  const message = String(error.message || error?.cause?.message || "").toLowerCase();
+  if (!message) return false;
+
+  return (
+    message.includes("user_program_plans") &&
+    (message.includes("does not exist") || message.includes("not exist") ||
+      message.includes("missing"))
+  );
+};
+
+const readPlanFromLocalStorage = (userId) => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getPlanStorageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.plan) {
+      return parsed;
+    }
+  } catch (err) {
+    console.error("Failed to read cached program plan", err);
+  }
+  return null;
+};
+
+const writePlanToLocalStorage = (userId, plan, updatedAt) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      getPlanStorageKey(userId),
+      JSON.stringify({ plan, updatedAt })
+    );
+  } catch (err) {
+    console.error("Failed to cache program plan", err);
+  }
+};
+
 function App() {
   const [user, setUser] = useState(null);
   const [courses, setCourses] = useState([]);
@@ -49,6 +100,7 @@ function App() {
   const [planTemplateSaving, setPlanTemplateSaving] = useState(false);
   const [planTemplateError, setPlanTemplateError] = useState(null);
   const [planTemplateUpdatedAt, setPlanTemplateUpdatedAt] = useState(null);
+  const missingPlanTableRef = useRef(false);
 
   const theme = useMemo(() => {
     const baseTheme = createTheme({
@@ -269,18 +321,40 @@ function App() {
           .select("plan, updated_at")
           .single();
 
-        if (error) throw error;
+        if (error) {
+          if (isMissingProgramPlanTableError(error)) {
+            missingPlanTableRef.current = true;
+            if (user?.id === targetUserId) {
+              writePlanToLocalStorage(targetUserId, nextPlan, payload.updated_at);
+              setProgramPlan(nextPlan);
+              setPlanTemplateUpdatedAt(payload.updated_at);
+              setPlanTemplateError(
+                "Supabase can't find the requirement plan table. We'll keep your custom plan on this device for now."
+              );
+            }
+            return;
+          }
+          throw error;
+        }
+
         if (user?.id !== targetUserId) return;
 
-        setProgramPlan(data?.plan ?? nextPlan);
-        setPlanTemplateUpdatedAt(data?.updated_at ?? payload.updated_at);
+        missingPlanTableRef.current = false;
+        const syncedPlan = data?.plan ?? nextPlan;
+        const syncedUpdatedAt = data?.updated_at ?? payload.updated_at;
+
+        setProgramPlan(syncedPlan);
+        setPlanTemplateUpdatedAt(syncedUpdatedAt);
         setPlanTemplateError(null);
+        writePlanToLocalStorage(targetUserId, syncedPlan, syncedUpdatedAt);
       } catch (err) {
         console.error("Error saving requirement plan:", err);
         if (user?.id === targetUserId) {
-          setPlanTemplateError(
-            "We couldn't save your requirement plan. Please try again."
-          );
+          if (!isMissingProgramPlanTableError(err)) {
+            setPlanTemplateError(
+              "We couldn't save your requirement plan. Please try again."
+            );
+          }
         }
         throw err;
       } finally {
@@ -299,6 +373,7 @@ function App() {
       setPlanTemplateError(null);
       setPlanTemplateLoading(false);
       setPlanTemplateSaving(false);
+      missingPlanTableRef.current = false;
       return;
     }
 
@@ -316,6 +391,23 @@ function App() {
       if (!isActive) return;
 
       if (error) {
+        if (isMissingProgramPlanTableError(error)) {
+          missingPlanTableRef.current = true;
+          const cached = readPlanFromLocalStorage(user.id);
+          if (cached?.plan) {
+            setProgramPlan(cached.plan);
+            setPlanTemplateUpdatedAt(cached.updatedAt ?? null);
+          } else {
+            setProgramPlan(DEFAULT_PLAN);
+            setPlanTemplateUpdatedAt(null);
+            writePlanToLocalStorage(user.id, DEFAULT_PLAN, null);
+          }
+          setPlanTemplateError(
+            "Supabase can't find the requirement plan table yet. Your plan will be saved locally until the table is available."
+          );
+          return;
+        }
+
         console.error("Error loading requirement plan:", error);
         setPlanTemplateError(
           "We couldn't load your requirement plan. Try again in a moment."
@@ -325,9 +417,13 @@ function App() {
         return;
       }
 
+      missingPlanTableRef.current = false;
+
       if (data?.plan) {
         setProgramPlan(data.plan);
-        setPlanTemplateUpdatedAt(data.updated_at ?? null);
+        const syncedUpdatedAt = data.updated_at ?? null;
+        setPlanTemplateUpdatedAt(syncedUpdatedAt);
+        writePlanToLocalStorage(user.id, data.plan, syncedUpdatedAt);
       } else {
         try {
           await persistProgramPlan(DEFAULT_PLAN);

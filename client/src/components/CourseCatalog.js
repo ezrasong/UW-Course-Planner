@@ -78,8 +78,11 @@ export default function CourseCatalog({
   const [uploadError, setUploadError] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [sidebarMaxHeight, setSidebarMaxHeight] = useState(null);
+  const [sidebarWidth, setSidebarWidth] = useState(null);
   const dropZoneRef = useRef(null);
   const fileInputRef = useRef(null);
+  const sidebarRef = useRef(null);
 
   const debouncedSetSearch = useMemo(
     () => debounce((val) => setSearch(val), 300),
@@ -292,9 +295,42 @@ export default function CourseCatalog({
       .trim();
   }, []);
 
+  const isJsonFile = useCallback((file) => {
+    if (!file) return false;
+    if (file.type) {
+      const type = file.type.toLowerCase();
+      if (type.includes("json")) return true;
+    }
+    return /\.json$/i.test(file.name || "");
+  }, []);
+
+  const getFileFromDataTransfer = useCallback((dataTransfer) => {
+    if (!dataTransfer) return null;
+    if (dataTransfer.files?.length) {
+      return dataTransfer.files[0];
+    }
+    if (dataTransfer.items?.length) {
+      for (const item of Array.from(dataTransfer.items)) {
+        if (item.kind === "file") {
+          const file = item.getAsFile ? item.getAsFile() : null;
+          if (file) return file;
+        }
+      }
+    }
+    return null;
+  }, []);
+
   const parseAndLoadPlan = useCallback(
     (file) => {
       if (!file) return Promise.resolve();
+
+      if (!isJsonFile(file)) {
+        setUploadSuccess("");
+        setUploadError(
+          "Please upload a JSON file with a .json extension for your requirement plan."
+        );
+        return Promise.resolve();
+      }
 
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -353,7 +389,7 @@ export default function CourseCatalog({
         reader.readAsText(file);
       });
     },
-    [onPlanSave, planNameFromFile]
+    [isJsonFile, onPlanSave, planNameFromFile]
   );
 
   const handlePlanUpload = useCallback(
@@ -376,12 +412,16 @@ export default function CourseCatalog({
 
       if (savingPlan) return;
 
-      const file = event.dataTransfer?.files?.[0];
-      if (!file) return;
+      const file = getFileFromDataTransfer(event.dataTransfer);
+      if (!file) {
+        setUploadSuccess("");
+        setUploadError("Drop a single JSON file to load a requirement plan.");
+        return;
+      }
 
       await parseAndLoadPlan(file);
     },
-    [parseAndLoadPlan, savingPlan]
+    [getFileFromDataTransfer, parseAndLoadPlan, savingPlan]
   );
 
   const handleDragOver = useCallback(
@@ -421,6 +461,68 @@ export default function CourseCatalog({
     },
     [savingPlan]
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!sidebarRef.current) return;
+
+    const computeSidebarWidth = () => {
+      if (!sidebarRef.current) return;
+      const parent = sidebarRef.current.parentElement || sidebarRef.current;
+      const parentWidth = parent?.getBoundingClientRect?.().width;
+      const availableWidth = parentWidth && parentWidth > 0 ? parentWidth : window.innerWidth;
+      const preferredFraction = availableWidth >= 1280 ? 0.32 : 0.36;
+      const minWidth = 280;
+      const maxWidth = 420;
+      const calculated = Math.min(
+        Math.max(availableWidth * preferredFraction, minWidth),
+        maxWidth
+      );
+      setSidebarWidth((prev) => {
+        if (prev == null) return Math.round(calculated);
+        return Math.abs(prev - calculated) > 1 ? Math.round(calculated) : prev;
+      });
+    };
+
+    computeSidebarWidth();
+
+    const parentElement = sidebarRef.current.parentElement;
+    let resizeObserver;
+    if (window.ResizeObserver && parentElement) {
+      resizeObserver = new ResizeObserver(() => computeSidebarWidth());
+      resizeObserver.observe(parentElement);
+    }
+
+    window.addEventListener("resize", computeSidebarWidth);
+
+    return () => {
+      window.removeEventListener("resize", computeSidebarWidth);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateSidebarMaxHeight = () => {
+      if (!sidebarRef.current) return;
+      const rect = sidebarRef.current.getBoundingClientRect();
+      const available = window.innerHeight - rect.top - 24;
+      const next = Math.max(available, 320);
+      setSidebarMaxHeight((prev) => (prev !== next ? next : prev ?? next));
+    };
+
+    updateSidebarMaxHeight();
+    window.addEventListener("resize", updateSidebarMaxHeight);
+    window.addEventListener("scroll", updateSidebarMaxHeight, { passive: true });
+
+    return () => {
+      window.removeEventListener("resize", updateSidebarMaxHeight);
+      window.removeEventListener("scroll", updateSidebarMaxHeight);
+    };
+  }, [sidebarWidth]);
 
   const resetPlan = useCallback(async () => {
     setPlanData(DEFAULT_PLAN);
@@ -488,11 +590,12 @@ export default function CourseCatalog({
         }}
       >
         <Paper
+          ref={sidebarRef}
           sx={{
             p: { xs: 2.5, md: 3 },
             borderRadius: 3,
             position: { xs: "relative", lg: "sticky" },
-            overflow: "hidden",
+            overflow: { xs: "visible", lg: "hidden" },
             backdropFilter: "blur(14px)",
             background: (theme) =>
               `linear-gradient(150deg, ${alpha(
@@ -502,373 +605,425 @@ export default function CourseCatalog({
             border: (theme) =>
               `1px solid ${alpha(theme.palette.divider, 0.3)}`,
             boxShadow: (theme) => theme.shadows[12],
-            width: { xs: "100%", lg: 320 },
+            width: {
+              xs: "100%",
+              lg: sidebarWidth ? `${sidebarWidth}px` : "clamp(280px, 32vw, 400px)",
+            },
             flexShrink: 0,
             alignSelf: { lg: "flex-start" },
             top: { lg: 0 },
-            maxHeight: { lg: "calc(100vh - 180px)" },
+            maxHeight: {
+              lg: sidebarMaxHeight
+                ? `${sidebarMaxHeight}px`
+                : "calc(100vh - 160px)",
+            },
             display: "flex",
             flexDirection: "column",
             gap: 0,
           }}
         >
-          <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0 }}>
-            <Typography variant="overline" color="text.secondary">
-              Program Planner
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              {planData.name}
-            </Typography>
-            <Stack spacing={1}>
-              <LinearProgress
-                variant="determinate"
-                value={completionPercent}
-                sx={{ height: 8, borderRadius: 999 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                {satisfiedCount} of {totalRequirements} core requirements
-                completed ({completionPercent}%).
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2.5,
+              flex: 1,
+              minHeight: 0,
+            }}
+          >
+            <Stack spacing={2}>
+              <Typography variant="overline" color="text.secondary">
+                Program Planner
               </Typography>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                {planData.name}
+              </Typography>
+              <Stack spacing={1}>
+                <LinearProgress
+                  variant="determinate"
+                  value={completionPercent}
+                  sx={{ height: 8, borderRadius: 999 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  {satisfiedCount} of {totalRequirements} core requirements completed ({completionPercent}%).
+                </Typography>
+              </Stack>
+              <Chip
+                label={`${trackedSubjectsCount} tracked subject${
+                  trackedSubjectsCount === 1 ? "" : "s"
+                }`}
+                size="small"
+                variant="outlined"
+                sx={{ alignSelf: "flex-start", fontWeight: 500 }}
+              />
             </Stack>
-            <Chip
-              label={`${trackedSubjectsCount} tracked subject${
-                trackedSubjectsCount === 1 ? "" : "s"
-              }`}
-              size="small"
-              variant="outlined"
-              sx={{ alignSelf: "flex-start", fontWeight: 500 }}
-            />
 
             <Divider sx={{ opacity: 0.6 }} />
 
-            <Stack spacing={1.25} sx={{ flexGrow: 1, minHeight: 0 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Requirement checklist
-              </Typography>
-              <List
-                dense
-                sx={{
-                  borderRadius: 2.5,
-                  overflow: "auto",
-                  flex: 1,
-                  minHeight: 0,
-                  pr: 0.5,
-                  pt: 0.5,
-                  pb: 0.75,
-                  position: "relative",
-                }}
-              >
-                {requirementProgress.length === 0 ? (
-                  <ListItem>
-                    <ListItemText
-                      primary="No structured requirements loaded"
-                      primaryTypographyProps={{ color: "text.secondary" }}
-                    />
-                  </ListItem>
-                ) : (
-                  requirementProgress.map((req, idx) => (
-                    <ListItem
-                      key={`${req.description}-${idx}`}
-                      disableGutters
-                      sx={{
-                        mb: 1,
-                        px: 1.25,
-                        py: 1.1,
-                        borderRadius: 2,
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        gap: 0.75,
-                        bgcolor: (theme) =>
-                          alpha(theme.palette.background.paper, req.satisfied ? 0.75 : 0.68),
-                        border: (theme) =>
-                          `1px solid ${alpha(
-                            req.satisfied
-                              ? theme.palette.success.main
-                              : theme.palette.primary.main,
-                            req.satisfied ? 0.45 : 0.35
-                          )}`,
-                        boxShadow: (theme) =>
-                          `0 10px 26px ${alpha(
-                            req.satisfied
-                              ? theme.palette.success.main
-                              : theme.palette.primary.main,
-                            0.12
-                          )}`,
-                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                        "&:hover": {
-                          transform: "translateY(-1px)",
-                          boxShadow: (theme) =>
-                            `0 18px 32px ${alpha(
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2.5,
+                overflowY: { xs: "visible", lg: "auto" },
+                pr: { xs: 0, lg: 1 },
+              }}
+            >
+              <Stack spacing={1.25}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Requirement checklist
+                </Typography>
+                <List
+                  dense
+                  sx={{
+                    borderRadius: 2.5,
+                    flex: 1,
+                    minHeight: 0,
+                    pr: 0.5,
+                    pt: 0.5,
+                    pb: 0.75,
+                    position: "relative",
+                    overflow: "visible",
+                  }}
+                >
+                  {requirementProgress.length === 0 ? (
+                    <ListItem>
+                      <ListItemText
+                        primary="No structured requirements loaded"
+                        primaryTypographyProps={{ color: "text.secondary" }}
+                      />
+                    </ListItem>
+                  ) : (
+                    requirementProgress.map((req, idx) => (
+                      <ListItem
+                        key={`${req.description}-${idx}`}
+                        disableGutters
+                        sx={{
+                          mb: 1,
+                          px: 1.25,
+                          py: 1.1,
+                          borderRadius: 2,
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          gap: 0.75,
+                          bgcolor: (theme) =>
+                            alpha(
+                              theme.palette.background.paper,
+                              req.satisfied ? 0.75 : 0.68
+                            ),
+                          border: (theme) =>
+                            `1px solid ${alpha(
                               req.satisfied
                                 ? theme.palette.success.main
                                 : theme.palette.primary.main,
-                              0.22
+                              req.satisfied ? 0.45 : 0.35
                             )}`,
-                        },
-                      }}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
-                          {req.satisfied ? (
-                            <CheckCircleIcon color="success" fontSize="small" />
-                          ) : (
-                            <RadioButtonUncheckedIcon color="disabled" fontSize="small" />
-                          )}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={req.description}
-                          primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}
-                          secondaryTypographyProps={{ fontSize: 12 }}
-                          secondary={
-                            req.satisfied
-                              ? `Satisfied by ${presentableCode(req.matchedCode)}`
-                              : "Tap a course below to review and add it to your plan."
-                          }
-                        />
-                      </Stack>
-                      <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                        {req.options.map((optionCode) => {
-                          const normalized = normalizeCode(optionCode);
-                          const inPlan = planCodes.has(normalized);
-                          return (
-                            <Tooltip
-                              key={optionCode}
-                              title={
-                                inPlan
-                                  ? "Already in your planner"
-                                  : "Preview details and choose a term"
-                              }
-                            >
-                              <Chip
-                                clickable
-                                label={presentableCode(optionCode)}
-                                color={inPlan ? "success" : "primary"}
-                                variant={inPlan ? "filled" : "outlined"}
-                                icon={
-                                  inPlan ? (
-                                    <CheckCircleIcon sx={{ fontSize: 18 }} />
-                                  ) : undefined
+                          boxShadow: (theme) =>
+                            `0 10px 26px ${alpha(
+                              req.satisfied
+                                ? theme.palette.success.main
+                                : theme.palette.primary.main,
+                              0.12
+                            )}`,
+                          transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                          "&:hover": {
+                            transform: "translateY(-1px)",
+                            boxShadow: (theme) =>
+                              `0 18px 32px ${alpha(
+                                req.satisfied
+                                  ? theme.palette.success.main
+                                  : theme.palette.primary.main,
+                                0.22
+                              )}`,
+                          },
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
+                            {req.satisfied ? (
+                              <CheckCircleIcon color="success" fontSize="small" />
+                            ) : (
+                              <RadioButtonUncheckedIcon color="disabled" fontSize="small" />
+                            )}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={req.description}
+                            primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}
+                            secondaryTypographyProps={{ fontSize: 12 }}
+                            secondary={
+                              req.satisfied
+                                ? `Satisfied by ${presentableCode(req.matchedCode)}`
+                                : "Tap a course below to review and add it to your plan."
+                            }
+                          />
+                        </Stack>
+                        <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                          {req.options.map((optionCode) => {
+                            const normalized = normalizeCode(optionCode);
+                            const inPlan = planCodes.has(normalized);
+                            return (
+                              <Tooltip
+                                key={optionCode}
+                                title={
+                                  inPlan
+                                    ? "Already in your planner"
+                                    : "Preview details and choose a term"
                                 }
-                                onClick={() => handleRequirementChipClick(optionCode)}
-                                sx={{
-                                  fontSize: 13,
-                                  boxShadow: (theme) =>
-                                    `0 12px 24px ${alpha(
+                              >
+                                <Chip
+                                  clickable
+                                  label={presentableCode(optionCode)}
+                                  color={inPlan ? "success" : "primary"}
+                                  variant={inPlan ? "filled" : "outlined"}
+                                  icon={
+                                    inPlan ? (
+                                      <CheckCircleIcon sx={{ fontSize: 18 }} />
+                                    ) : undefined
+                                  }
+                                  onClick={() => handleRequirementChipClick(optionCode)}
+                                  sx={{
+                                    fontSize: 13,
+                                    boxShadow: (theme) =>
+                                      `0 12px 24px ${alpha(
+                                        inPlan
+                                          ? theme.palette.success.main
+                                          : theme.palette.primary.main,
+                                        0.22
+                                      )}`,
+                                    borderColor: (theme) =>
+                                      alpha(
+                                        inPlan
+                                          ? theme.palette.success.main
+                                          : theme.palette.primary.main,
+                                        inPlan ? 0.45 : 0.35
+                                      ),
+                                    backgroundColor: (theme) =>
                                       inPlan
-                                        ? theme.palette.success.main
-                                        : theme.palette.primary.main,
-                                      0.22
-                                    )}`,
-                                  borderColor: (theme) =>
-                                    alpha(
-                                      inPlan
-                                        ? theme.palette.success.main
-                                        : theme.palette.primary.main,
-                                      inPlan ? 0.45 : 0.35
-                                    ),
-                                  backgroundColor: (theme) =>
-                                    inPlan
-                                      ? alpha(theme.palette.success.main, 0.12)
-                                      : alpha(theme.palette.primary.main, 0.05),
-                                  "& .MuiChip-icon": {
-                                    color: (theme) => theme.palette.success.contrastText,
-                                  },
-                                }}
-                              />
-                            </Tooltip>
-                          );
-                        })}
-                      </Stack>
-                    </ListItem>
-                  ))
-                )}
-              </List>
-            </Stack>
-
-            <Divider sx={{ opacity: 0.6 }} />
-
-            <Stack spacing={1.75}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Catalog filters
-              </Typography>
-              <TextField
-                label="Search courses"
-                size="small"
-                value={rawSearch}
-                onChange={(e) => setRawSearch(e.target.value)}
-                placeholder="Search by code or title"
-              />
-              <FormControl size="small">
-                <InputLabel>Subject</InputLabel>
-                <Select
-                  multiple
-                  value={subjects}
-                  onChange={(e) => setSubjects(e.target.value)}
-                  input={<OutlinedInput label="Subject" />}
-                  renderValue={(sel) => (
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {sel.map((s) => (
-                        <Chip key={s} label={s} size="small" />
-                      ))}
-                    </Box>
+                                        ? alpha(theme.palette.success.main, 0.12)
+                                        : alpha(theme.palette.primary.main, 0.05),
+                                    "& .MuiChip-icon": {
+                                      color: (theme) => theme.palette.success.contrastText,
+                                    },
+                                  }}
+                                />
+                              </Tooltip>
+                            );
+                          })}
+                        </Stack>
+                      </ListItem>
+                    ))
                   )}
-                >
-                  {allSubjects.map((sub) => (
-                    <MenuItem key={sub} value={sub}>
-                      <Checkbox checked={subjects.includes(sub)} />
-                      <Typography sx={{ ml: 1 }}>{sub}</Typography>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={programOnly}
-                      onChange={(e) => setProgramOnly(e.target.checked)}
-                      size="small"
-                    />
-                  }
-                  label="Show tracked subjects"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={requiredOnly}
-                      onChange={(e) => setRequiredOnly(e.target.checked)}
-                      size="small"
-                    />
-                  }
-                  label="Show requirements only"
-                />
+                </List>
               </Stack>
-              {filtersActive && (
-                <Button
-                  onClick={clearFilters}
+
+              <Divider sx={{ opacity: 0.6 }} />
+
+              <Stack spacing={1.75}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Catalog filters
+                </Typography>
+                <TextField
+                  label="Search courses"
                   size="small"
-                  color="secondary"
-                  startIcon={<FilterAltOffIcon />}
-                  sx={{ alignSelf: "flex-start" }}
+                  value={rawSearch}
+                  onChange={(e) => setRawSearch(e.target.value)}
+                  placeholder="Search by code or title"
+                />
+                <FormControl size="small">
+                  <InputLabel>Subject</InputLabel>
+                  <Select
+                    multiple
+                    value={subjects}
+                    onChange={(e) => setSubjects(e.target.value)}
+                    input={<OutlinedInput label="Subject" />}
+                    renderValue={(sel) => (
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                        {sel.map((s) => (
+                          <Chip key={s} label={s} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    {allSubjects.map((sub) => (
+                      <MenuItem key={sub} value={sub}>
+                        <Checkbox checked={subjects.includes(sub)} />
+                        <Typography sx={{ ml: 1 }}>{sub}</Typography>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={programOnly}
+                        onChange={(e) => setProgramOnly(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Show tracked subjects"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={requiredOnly}
+                        onChange={(e) => setRequiredOnly(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Show requirements only"
+                  />
+                </Stack>
+                {filtersActive && (
+                  <Button
+                    onClick={clearFilters}
+                    size="small"
+                    color="secondary"
+                    startIcon={<FilterAltOffIcon />}
+                    sx={{ alignSelf: "flex-start" }}
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </Stack>
+
+              <Divider sx={{ opacity: 0.6 }} />
+
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Custom requirement plan
+                </Typography>
+                <Box
+                  ref={dropZoneRef}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={handleDropZoneKeyDown}
+                  onClick={handleBrowseClick}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  aria-label="Upload a custom requirement plan JSON file"
+                  sx={{
+                    position: "relative",
+                    borderRadius: 2,
+                    border: (theme) =>
+                      `1px dashed ${alpha(
+                        theme.palette.primary.main,
+                        isDraggingFile ? 0.85 : 0.4
+                      )}`,
+                    backgroundColor: (theme) =>
+                      alpha(
+                        theme.palette.primary.main,
+                        isDraggingFile ? 0.12 : 0.05
+                      ),
+                    color: "text.primary",
+                    px: 2.5,
+                    py: 3,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 1,
+                    cursor: "pointer",
+                    outline: "none",
+                    transition:
+                      "border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease",
+                    transform: isDraggingFile ? "scale(1.01)" : "none",
+                    textAlign: "center",
+                    "&:focus-visible": {
+                      borderColor: (theme) => theme.palette.primary.main,
+                      boxShadow: (theme) =>
+                        `0 0 0 3px ${alpha(theme.palette.primary.main, 0.25)}`,
+                    },
+                  }}
                 >
-                  Clear filters
-                </Button>
-              )}
-            </Stack>
-
-            <Divider sx={{ opacity: 0.6 }} />
-
-            <Stack spacing={1.5}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Custom requirement plan
-              </Typography>
-              <Box
-                ref={dropZoneRef}
-                role="button"
-                tabIndex={0}
-                onKeyDown={handleDropZoneKeyDown}
-                onClick={handleBrowseClick}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                aria-label="Upload a custom requirement plan JSON file"
-                sx={{
-                  position: "relative",
-                  borderRadius: 2,
-                  border: (theme) =>
-                    `1px dashed ${alpha(
-                      theme.palette.primary.main,
-                      isDraggingFile ? 0.85 : 0.4
-                    )}`,
-                  backgroundColor: (theme) =>
-                    alpha(
-                      theme.palette.primary.main,
-                      isDraggingFile ? 0.12 : 0.05
-                    ),
-                  color: "text.primary",
-                  px: 2.5,
-                  py: 3,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 1,
-                  cursor: "pointer",
-                  outline: "none",
-                  transition: "border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease",
-                  transform: isDraggingFile ? "scale(1.01)" : "none",
-                  textAlign: "center",
-                  "&:focus-visible": {
-                    borderColor: (theme) => theme.palette.primary.main,
-                    boxShadow: (theme) =>
-                      `0 0 0 3px ${alpha(theme.palette.primary.main, 0.25)}`,
-                  },
-                }}
-              >
-                <UploadIcon color="primary" sx={{ fontSize: 32 }} />
-                <Stack spacing={0.5} alignItems="center">
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Drop your JSON file here
+                  <UploadIcon fontSize="large" />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Drop your requirement plan JSON
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    or click to browse from your computer
+                    Drag and drop a file here, or click to browse your computer.
                   </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{ mt: 1.5 }}
+                    startIcon={<UploadIcon />}
+                  >
+                    Browse files
+                  </Button>
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    onChange={handlePlanUpload}
+                    tabIndex={-1}
+                  />
+                </Box>
+                <Stack spacing={1}>
+                  {uploadError && (
+                    <Alert
+                      severity="error"
+                      onClose={() => setUploadError(null)}
+                      sx={{ alignItems: "flex-start" }}
+                    >
+                      {uploadError}
+                    </Alert>
+                  )}
+                  {uploadSuccess && (
+                    <Alert
+                      severity="success"
+                      onClose={() => setUploadSuccess("")}
+                      icon={<CheckCircleIcon fontSize="inherit" />}
+                    >
+                      {uploadSuccess}
+                    </Alert>
+                  )}
+                  {planSyncError && (
+                    <Alert
+                      severity="error"
+                      icon={<InfoIcon fontSize="inherit" />}
+                      sx={{ alignItems: "flex-start" }}
+                      action={
+                        <Button
+                          color="inherit"
+                          size="small"
+                          onClick={() => onPlanSave?.(planData)}
+                          disabled={planSyncLoading}
+                        >
+                          Retry sync
+                        </Button>
+                      }
+                    >
+                      {planSyncError}
+                    </Alert>
+                  )}
+                  {savingPlan && (
+                    <Alert severity="info" icon={<InfoIcon fontSize="inherit" />}>
+                      Saving your plan to Supabase...
+                    </Alert>
+                  )}
+                  {lastSyncedAt && (
+                    <Typography variant="caption" color="text.secondary">
+                      Last synced {new Date(lastSyncedAt).toLocaleString()}
+                    </Typography>
+                  )}
+                  <Button
+                    variant="text"
+                    color="secondary"
+                    size="small"
+                    onClick={resetPlan}
+                    startIcon={<RestartAltIcon />}
+                    sx={{ alignSelf: "flex-start" }}
+                  >
+                    Reset to default plan
+                  </Button>
                 </Stack>
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleBrowseClick();
-                  }}
-                  disabled={savingPlan}
-                  sx={{ mt: 1 }}
-                >
-                  Choose file
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  JSON should include <Box component="code">name</Box>, optional
-                  <Box component="code">relevantSubjects</Box>, and a
-                  <Box component="code">requirements</Box> array.
-                </Typography>
-                <input
-                  ref={fileInputRef}
-                  hidden
-                  type="file"
-                  accept="application/json"
-                  onChange={handlePlanUpload}
-                />
-              </Box>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<RestartAltIcon />}
-                  onClick={resetPlan}
-                  disabled={savingPlan}
-                >
-                  Reset to default
-                </Button>
               </Stack>
-              {uploadError && <Alert severity="error">{uploadError}</Alert>}
-              {!uploadError && uploadSuccess && (
-                <Alert severity="success">{uploadSuccess}</Alert>
-              )}
-              {!uploadError && planSyncError && (
-                <Alert severity="error">{planSyncError}</Alert>
-              )}
-              {!planSyncError && (
-                <Typography variant="caption" color="text.secondary">
-                  {savingPlan
-                    ? "Saving your requirement plan..."
-                    : planSyncLoading
-                    ? "Loading your saved requirement plan..."
-                    : lastSyncedAt
-                    ? `Last saved ${new Date(lastSyncedAt).toLocaleString()}`
-                    : "Changes save to your account automatically."}
-                </Typography>
-              )}
-            </Stack>
-            </Stack>
+            </Box>
+          </Box>
         </Paper>
 
         <Paper
