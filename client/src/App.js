@@ -275,21 +275,47 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    let active = true;
 
-    setLoadingCourses(true);
-    setCatalogError(null);
-    fetchCourses()
-      .then((fetched) => {
+    const loadCourses = async () => {
+      setLoadingCourses(true);
+      setCatalogError(null);
+
+      try {
+        const fetched = await fetchCourses();
+        if (!active) return;
         setCourses(fetched);
-      })
-      .catch((err) => {
+      } catch (err) {
+        if (!active) return;
         console.error("Error loading courses:", err);
         setCatalogError(
           "We ran into a problem loading the catalog. Please try again in a moment."
         );
-      })
-      .finally(() => setLoadingCourses(false));
+      } finally {
+        if (active) {
+          setLoadingCourses(false);
+        }
+      }
+    };
+
+    loadCourses();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!user) {
+      setPlan([]);
+      setPlanError(null);
+      setLoadingPlan(false);
+      return () => {
+        active = false;
+      };
+    }
 
     setPlanError(null);
     setLoadingPlan(true);
@@ -299,6 +325,7 @@ function App() {
       .select("course_code, term, completed")
       .eq("user_id", user.id)
       .then(({ data, error }) => {
+        if (!active) return;
         if (error) {
           console.error("Error loading plan:", error);
           setPlanError(
@@ -309,7 +336,15 @@ function App() {
           setPlan(data || []);
         }
       })
-      .finally(() => setLoadingPlan(false));
+      .finally(() => {
+        if (active) {
+          setLoadingPlan(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   const persistProgramPlan = useCallback(
