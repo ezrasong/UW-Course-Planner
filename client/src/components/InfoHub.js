@@ -54,49 +54,27 @@ const requirementExample = JSON.stringify(
   2
 );
 
-const glassPanel = (theme) => ({
-  position: "relative",
-  overflow: "hidden",
-  borderRadius: 3,
-  backdropFilter: "blur(20px)",
-  background: `linear-gradient(145deg, ${alpha(
-    theme.palette.background.paper,
-    0.2
-  )}, ${alpha(theme.palette.background.paper, 0.05)})`,
-  border: `1px solid ${alpha(theme.palette.common.white, 0.14)}`,
-  boxShadow: `0 24px 70px ${alpha(theme.palette.common.black, 0.2)}`,
-  "&::before": {
-    content: '""',
-    position: "absolute",
-    inset: -20,
-    borderRadius: "inherit",
-    background: `radial-gradient(60% 60% at 20% 20%, ${alpha(
-      theme.palette.primary.main,
-      0.18
-    )} 0%, transparent 70%)`,
-    opacity: 0.7,
-    filter: "blur(50px)",
-  },
-  "&::after": {
-    content: '""',
-    position: "absolute",
-    inset: 0,
-    borderRadius: "inherit",
-    background: `linear-gradient(160deg, ${alpha(
-      theme.palette.common.white,
-      0.18
-    )} 0%, transparent 55%)`,
-    mixBlendMode: "screen",
-    pointerEvents: "none",
-  },
-});
+const cardPanel = (theme) => {
+  const isDark = theme.palette.mode === "dark";
+  return {
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: 3,
+    backgroundColor: alpha(
+      theme.palette.background.paper,
+      isDark ? 0.86 : 1
+    ),
+    border: `1px solid ${alpha(theme.palette.divider, isDark ? 0.7 : 0.45)}`,
+    boxShadow: theme.shadows[4],
+  };
+};
 
 export default function InfoHub() {
   return (
     <Stack spacing={4} sx={{ pb: 4, flex: 1, minHeight: 0 }}>
       <Paper
         elevation={0}
-        sx={[(theme) => glassPanel(theme), { px: { xs: 3, md: 5 }, py: { xs: 4, md: 6 }, borderRadius: 4 }]}
+        sx={[(theme) => cardPanel(theme), { px: { xs: 3, md: 5 }, py: { xs: 4, md: 6 }, borderRadius: 4 }]}
       >
         <Stack spacing={2} sx={{ maxWidth: 720 }}>
           <Chip
@@ -122,7 +100,7 @@ export default function InfoHub() {
         <Grid item xs={12} md={6}>
           <Paper
             elevation={0}
-            sx={[(theme) => glassPanel(theme), { height: "100%", p: 3, display: "flex", flexDirection: "column", gap: 2 }]}
+            sx={[(theme) => cardPanel(theme), { height: "100%", p: 3, display: "flex", flexDirection: "column", gap: 2 }]}
           >
             <Stack direction="row" spacing={2} alignItems="center">
               <SchemaIcon color="primary" />
@@ -168,7 +146,7 @@ export default function InfoHub() {
         <Grid item xs={12} md={6}>
           <Paper
             elevation={0}
-            sx={[(theme) => glassPanel(theme), { height: "100%", p: 3, display: "flex", flexDirection: "column", gap: 2 }]}
+            sx={[(theme) => cardPanel(theme), { height: "100%", p: 3, display: "flex", flexDirection: "column", gap: 2 }]}
           >
             <Stack direction="row" spacing={2} alignItems="center">
               <CodeIcon color="primary" />
@@ -193,15 +171,17 @@ export default function InfoHub() {
                 fontFamily: "'Source Code Pro', 'Fira Code', monospace",
                 fontSize: 13,
                 color: "text.primary",
-                background: (theme) =>
-                  `linear-gradient(135deg, ${alpha(
-                    theme.palette.background.paper,
-                    0.6
-                  )}, ${alpha(theme.palette.background.paper, 0.4)})`,
+                backgroundColor: (theme) =>
+                  alpha(
+                    theme.palette.background.default,
+                    theme.palette.mode === "dark" ? 0.55 : 0.92
+                  ),
                 border: (theme) =>
-                  `1px solid ${alpha(theme.palette.common.white, 0.18)}`,
-                boxShadow: (theme) =>
-                  `0 18px 35px ${alpha(theme.palette.common.black, 0.15)}`,
+                  `1px solid ${alpha(
+                    theme.palette.divider,
+                    theme.palette.mode === "dark" ? 0.7 : 0.5
+                  )}`,
+                boxShadow: (theme) => theme.shadows[2],
               }}
             >
               {samplePlan}
@@ -212,7 +192,7 @@ export default function InfoHub() {
 
       <Paper
         elevation={0}
-        sx={[(theme) => glassPanel(theme), { p: { xs: 3, md: 4 }, display: "flex", flexDirection: "column", gap: 3 }]}
+        sx={[(theme) => cardPanel(theme), { p: { xs: 3, md: 4 }, display: "flex", flexDirection: "column", gap: 3 }]}
       >
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
           <TipsIcon color="primary" />
@@ -236,14 +216,10 @@ export default function InfoHub() {
             fontFamily: "'Source Code Pro', 'Fira Code', monospace",
             fontSize: 13,
             color: "text.primary",
-            background: (theme) =>
-              `linear-gradient(135deg, ${alpha(
-                theme.palette.background.paper,
-                0.6
-              )}, ${alpha(theme.palette.background.paper, 0.4)})`,
-            border: (theme) => `1px solid ${alpha(theme.palette.common.white, 0.18)}`,
-            boxShadow: (theme) =>
-              `0 18px 35px ${alpha(theme.palette.common.black, 0.15)}`,
+            backgroundColor: (theme) =>
+              alpha(theme.palette.background.paper, 0.92),
+            border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+            boxShadow: (theme) => theme.shadows[2],
           }}
         >
           {requirementExample}
@@ -281,7 +257,7 @@ export default function InfoHub() {
 
       <Paper
         elevation={0}
-        sx={[(theme) => glassPanel(theme), { p: { xs: 3, md: 4 }, display: "flex", flexDirection: "column", gap: 2 }]}
+        sx={[(theme) => cardPanel(theme), { p: { xs: 3, md: 4 }, display: "flex", flexDirection: "column", gap: 2 }]}
       >
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           Workflow best practices
