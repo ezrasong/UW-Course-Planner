@@ -10,10 +10,6 @@ import {
   TextField,
   Checkbox,
   FormControlLabel,
-  FormControl,
-  InputLabel,
-  Select,
-  OutlinedInput,
   MenuItem,
   Chip,
   Dialog,
@@ -35,6 +31,7 @@ import {
   ListItemText,
   Fade,
   Chip as MuiChip,
+  Autocomplete,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { DataGrid } from "@mui/x-data-grid";
@@ -160,6 +157,24 @@ export default function CourseCatalog({
     [courses]
   );
 
+  const subjectGroups = useMemo(() => {
+    const groups = new Map();
+    allSubjects.forEach((subject) => {
+      const initial = subject?.[0]?.toUpperCase() ?? "#";
+      const existing = groups.get(initial) ?? [];
+      existing.push(subject);
+      groups.set(initial, existing);
+    });
+    return Array.from(groups.entries())
+      .map(([initial, subjects]) => ({
+        initial,
+        subjects,
+      }))
+      .sort((a, b) => a.initial.localeCompare(b.initial));
+  }, [allSubjects]);
+
+  const selectedSubjectsSet = useMemo(() => new Set(subjects), [subjects]);
+
   const courseMap = useMemo(() => {
     return courses.reduce((map, course) => {
       const key = course.subjectCode + course.catalogNumber;
@@ -226,6 +241,28 @@ export default function CourseCatalog({
     setRawSearch("");
     setSearch("");
   }, []);
+
+  const toggleSubjectGroup = useCallback(
+    (initial) => {
+      const group = subjectGroups.find((entry) => entry.initial === initial);
+      if (!group) return;
+
+      setSubjects((prev) => {
+        const allSelected = group.subjects.every((subject) =>
+          prev.includes(subject)
+        );
+
+        if (allSelected) {
+          return prev.filter((subject) => !group.subjects.includes(subject));
+        }
+
+        const merged = new Set(prev);
+        group.subjects.forEach((subject) => merged.add(subject));
+        return Array.from(merged);
+      });
+    },
+    [subjectGroups]
+  );
 
   const NoRowsOverlay = () => (
     <Stack spacing={1} alignItems="center" justifyContent="center" sx={{ p: 4 }}>
@@ -832,29 +869,59 @@ export default function CourseCatalog({
                   onChange={(e) => setRawSearch(e.target.value)}
                   placeholder="Search by code or title"
                 />
-                <FormControl size="small">
-                  <InputLabel>Subject</InputLabel>
-                  <Select
-                    multiple
-                    value={subjects}
-                    onChange={(e) => setSubjects(e.target.value)}
-                    input={<OutlinedInput label="Subject" />}
-                    renderValue={(sel) => (
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {sel.map((s) => (
-                          <Chip key={s} label={s} size="small" />
-                        ))}
-                      </Box>
-                    )}
-                  >
-                    {allSubjects.map((sub) => (
-                      <MenuItem key={sub} value={sub}>
-                        <Checkbox checked={subjects.includes(sub)} />
-                        <Typography sx={{ ml: 1 }}>{sub}</Typography>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  multiple
+                  size="small"
+                  options={allSubjects}
+                  value={subjects}
+                  onChange={(_, value) => setSubjects(value)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Subjects"
+                      placeholder={
+                        subjects.length ? "Add another subject" : "Search subjects"
+                      }
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        {...getTagProps({ index })}
+                        label={option}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))
+                  }
+                  ListboxProps={{ style: { maxHeight: 260 } }}
+                />
+                {subjectGroups.length > 0 && (
+                  <Stack spacing={0.5}>
+                    <Typography variant="caption" color="text.secondary">
+                      Jump to subject initials
+                    </Typography>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      {subjectGroups.map((group) => {
+                        const active = group.subjects.every((subject) =>
+                          selectedSubjectsSet.has(subject)
+                        );
+                        return (
+                          <Chip
+                            key={group.initial}
+                            label={group.initial}
+                            size="small"
+                            color={active ? "primary" : "default"}
+                            variant={active ? "filled" : "outlined"}
+                            onClick={() => toggleSubjectGroup(group.initial)}
+                            sx={{ cursor: "pointer" }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Stack>
+                )}
                 <Stack direction="row" spacing={1} flexWrap="wrap">
                   <FormControlLabel
                     control={
