@@ -118,10 +118,6 @@ export default function Planner({
   );
 
   const summary = useMemo(() => computeSummary(plan), [computeSummary, plan]);
-  const visibleSummary = useMemo(
-    () => computeSummary(filteredPlan),
-    [computeSummary, filteredPlan]
-  );
 
   const openDialog = (code) => {
     setSelectedCode(code);
@@ -195,12 +191,6 @@ export default function Planner({
               Planned courses
             </Typography>
             <Typography variant="h4">{summary.total || 0}</Typography>
-            {filtersActive && (
-              <Typography variant="caption" color="text.secondary">
-                Showing {visibleSummary.total} matching course
-                {visibleSummary.total === 1 ? "" : "s"}.
-              </Typography>
-            )}
           </Stack>
           <Stack spacing={1} sx={{ minWidth: { sm: 240 } }}>
             <Typography variant="overline" color="text.secondary">
@@ -214,13 +204,6 @@ export default function Planner({
             <Typography variant="body2" color="text.secondary">
               {summary.completed} completed • {summary.remaining} remaining
             </Typography>
-            {filtersActive && (
-              <Typography variant="caption" color="text.secondary">
-                Filtered view: {visibleSummary.completed} completed •
-                {" "}
-                {visibleSummary.remaining} remaining
-              </Typography>
-            )}
           </Stack>
           <Stack spacing={0.5}>
             <Typography variant="overline" color="text.secondary">
