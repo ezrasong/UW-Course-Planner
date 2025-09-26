@@ -464,21 +464,39 @@ export default function CourseCatalog({
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    let frame = null;
+
     const updateSidebarMaxHeight = () => {
       if (!sidebarRef.current) return;
-      const rect = sidebarRef.current.getBoundingClientRect();
-      const available = window.innerHeight - rect.top - 24;
-      const next = Math.max(available, 360);
-      setSidebarMaxHeight((prev) => (prev !== next ? next : prev ?? next));
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        if (!sidebarRef.current) return;
+        const rect = sidebarRef.current.getBoundingClientRect();
+        const margin = 24;
+        const available = window.innerHeight - rect.top - margin;
+        const next = Math.max(Math.round(available), 360);
+        setSidebarMaxHeight((prev) => {
+          if (prev === null) return next;
+          return Math.abs(prev - next) > 1 ? next : prev;
+        });
+      });
     };
 
     updateSidebarMaxHeight();
     window.addEventListener("resize", updateSidebarMaxHeight);
     window.addEventListener("scroll", updateSidebarMaxHeight, { passive: true });
 
+    let observer;
+    if (typeof ResizeObserver !== "undefined" && sidebarRef.current) {
+      observer = new ResizeObserver(() => updateSidebarMaxHeight());
+      observer.observe(sidebarRef.current);
+    }
+
     return () => {
+      if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", updateSidebarMaxHeight);
       window.removeEventListener("scroll", updateSidebarMaxHeight);
+      if (observer) observer.disconnect();
     };
   }, []);
 
@@ -553,7 +571,10 @@ export default function CourseCatalog({
             p: { xs: 2.5, md: 3 },
             borderRadius: 3,
             position: { xs: "relative", lg: "sticky" },
-            overflow: { xs: "visible", lg: "hidden" },
+            overflow: "visible",
+            overflowY: {
+              lg: sidebarMaxHeight ? "auto" : "visible",
+            },
             backdropFilter: "blur(14px)",
             background: (theme) =>
               `linear-gradient(150deg, ${alpha(
@@ -565,7 +586,7 @@ export default function CourseCatalog({
             boxShadow: (theme) => theme.shadows[12],
             width: {
               xs: "100%",
-              lg: sidebarMaxHeight ? "clamp(300px, 28vw, 360px)" : 320,
+              lg: "clamp(320px, 30vw, 420px)",
             },
             flexShrink: 0,
             alignSelf: { lg: "flex-start" },
@@ -575,9 +596,23 @@ export default function CourseCatalog({
                 ? `${sidebarMaxHeight}px`
                 : "calc(100vh - 160px)",
             },
+            transition: "max-height 0.2s ease",
             display: "flex",
             flexDirection: "column",
             gap: 0,
+            scrollbarWidth: "thin",
+            "&::-webkit-scrollbar": {
+              width: 6,
+            },
+            "&::-webkit-scrollbar-thumb": {
+              backgroundColor: (theme) =>
+                alpha(theme.palette.text.secondary, 0.35),
+              borderRadius: 999,
+            },
+            "&::-webkit-scrollbar-track": {
+              backgroundColor: (theme) =>
+                alpha(theme.palette.background.paper, 0.4),
+            },
           }}
         >
           <Box
