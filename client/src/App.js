@@ -68,28 +68,45 @@ function App() {
       },
     });
 
-    const surfaceGradient = `linear-gradient(140deg, ${alpha(
+    const backgroundToneTop = alpha(
+      baseTheme.palette.primary.light,
+      darkMode ? 0.26 : 0.16
+    );
+    const backgroundToneCorner = alpha(
+      baseTheme.palette.secondary.light,
+      darkMode ? 0.24 : 0.12
+    );
+    const canvasTop = alpha(
+      baseTheme.palette.background.default,
+      1
+    );
+    const canvasBottom = alpha(
       baseTheme.palette.background.paper,
-      darkMode ? 0.32 : 0.82
-    )} 0%, ${alpha(
-      baseTheme.palette.background.paper,
-      darkMode ? 0.15 : 0.62
-    )} 100%)`;
-    const surfaceBorder = `1px solid ${alpha(
-      darkMode ? baseTheme.palette.common.white : baseTheme.palette.common.black,
-      darkMode ? 0.1 : 0.12
-    )}`;
-    const floatingShadow = `0 32px 80px ${alpha(
-      baseTheme.palette.common.black,
-      darkMode ? 0.6 : 0.18
-    )}`;
+      darkMode ? 0.92 : 0.98
+    );
 
-    const floatingSurface = {
+    const siteBackground = [
+      `radial-gradient(120% 120% at 0% 0%, ${backgroundToneTop} 0%, transparent 65%)`,
+      `radial-gradient(120% 120% at 100% 0%, ${backgroundToneCorner} 0%, transparent 70%)`,
+      `linear-gradient(180deg, ${canvasTop} 0%, ${canvasBottom} 100%)`,
+    ].join(",");
+
+    const surfaceBorderColor = alpha(
+      baseTheme.palette.divider,
+      darkMode ? 0.7 : 0.4
+    );
+    const surfaceShadow = darkMode
+      ? "0 18px 45px rgba(2, 6, 23, 0.55)"
+      : "0 20px 38px rgba(15, 23, 42, 0.12)";
+
+    const elevatedSurface = {
+      backgroundColor: alpha(
+        baseTheme.palette.background.paper,
+        darkMode ? 0.85 : 1
+      ),
       backgroundImage: "none",
-      background: surfaceGradient,
-      border: surfaceBorder,
-      backdropFilter: "blur(24px)",
-      boxShadow: floatingShadow,
+      border: `1px solid ${surfaceBorderColor}`,
+      boxShadow: surfaceShadow,
     };
 
     return createTheme(baseTheme, {
@@ -100,45 +117,9 @@ function App() {
               minHeight: "100vh",
               position: "relative",
               backgroundAttachment: "fixed",
-              background: `radial-gradient(120% 120% at 0% 0%, ${alpha(
-                baseTheme.palette.primary.main,
-                darkMode ? 0.24 : 0.16
-              )} 0%, transparent 60%), radial-gradient(110% 110% at 100% 0%, ${alpha(
-                baseTheme.palette.secondary.main,
-                darkMode ? 0.22 : 0.14
-              )} 0%, transparent 62%), linear-gradient(180deg, ${alpha(
-                baseTheme.palette.background.default,
-                1
-              )} 0%, ${alpha(
-                baseTheme.palette.background.paper,
-                darkMode ? 0.95 : 0.9
-              )} 100%)`,
-            },
-            "&::before": {
-              content: '""',
-              position: "fixed",
-              inset: "-35% -15%",
-              pointerEvents: "none",
-              background: `radial-gradient(70% 70% at 45% 10%, ${alpha(
-                baseTheme.palette.primary.light,
-                darkMode ? 0.28 : 0.24
-              )} 0%, transparent 65%)`,
-              filter: "blur(120px)",
-              opacity: darkMode ? 0.7 : 0.55,
-              zIndex: -1,
-            },
-            "&::after": {
-              content: '""',
-              position: "fixed",
-              inset: "-30% -20%",
-              pointerEvents: "none",
-              background: `radial-gradient(65% 65% at 80% 85%, ${alpha(
-                baseTheme.palette.secondary.light,
-                darkMode ? 0.3 : 0.22
-              )} 0%, transparent 70%)`,
-              filter: "blur(120px)",
-              opacity: darkMode ? 0.65 : 0.5,
-              zIndex: -1,
+              backgroundImage: siteBackground,
+              backgroundColor: canvasTop,
+              backgroundSize: "cover",
             },
             "*, *::before, *::after": {
               boxSizing: "border-box",
@@ -154,47 +135,47 @@ function App() {
         },
         MuiPaper: {
           styleOverrides: {
-            root: floatingSurface,
+            root: elevatedSurface,
           },
         },
         MuiAppBar: {
           styleOverrides: {
             root: {
-              ...floatingSurface,
+              ...elevatedSurface,
               borderRadius: 28,
-              boxShadow: `0 28px 70px ${alpha(
-                baseTheme.palette.common.black,
-                darkMode ? 0.55 : 0.2
-              )}`,
+              boxShadow: darkMode
+                ? "0 20px 48px rgba(2, 6, 23, 0.6)"
+                : "0 24px 50px rgba(15, 23, 42, 0.14)",
+              color: baseTheme.palette.text.primary,
             },
           },
         },
         MuiMenu: {
           styleOverrides: {
-            paper: floatingSurface,
+            paper: elevatedSurface,
           },
         },
         MuiPopover: {
           styleOverrides: {
-            paper: floatingSurface,
+            paper: elevatedSurface,
           },
         },
         MuiDialog: {
           styleOverrides: {
             paper: {
-              ...floatingSurface,
+              ...elevatedSurface,
               borderRadius: 24,
             },
           },
         },
         MuiCard: {
           styleOverrides: {
-            root: floatingSurface,
+            root: elevatedSurface,
           },
         },
         MuiTableContainer: {
           styleOverrides: {
-            root: floatingSurface,
+            root: elevatedSurface,
           },
         },
         MuiTooltip: {
