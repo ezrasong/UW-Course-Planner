@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Box,
   TextField,
@@ -97,21 +97,27 @@ export default function Planner({
     });
   }, [filteredPlan]);
 
-  const summary = useMemo(() => {
-    const total = filteredPlan.length;
-    const completed = filteredPlan.filter((item) => item.completed).length;
-    const estimatedUnits = filteredPlan.reduce((sum, item) => {
-      const units = parseFloat(coursesMap[item.course_code]?.units);
-      return Number.isFinite(units) ? sum + units : sum;
-    }, 0);
-    return {
-      total,
-      completed,
-      remaining: total - completed,
-      percent: total ? Math.round((completed / total) * 100) : 0,
-      units: Math.round(estimatedUnits * 10) / 10,
-    };
-  }, [filteredPlan, coursesMap]);
+  const computeSummary = useCallback(
+    (items) => {
+      const total = items.length;
+      const completed = items.filter((item) => item.completed).length;
+      const estimatedUnits = items.reduce((sum, item) => {
+        const units = parseFloat(coursesMap[item.course_code]?.units);
+        return Number.isFinite(units) ? sum + units : sum;
+      }, 0);
+
+      return {
+        total,
+        completed,
+        remaining: total - completed,
+        percent: total ? Math.round((completed / total) * 100) : 0,
+        units: Math.round(estimatedUnits * 10) / 10,
+      };
+    },
+    [coursesMap]
+  );
+
+  const summary = useMemo(() => computeSummary(plan), [computeSummary, plan]);
 
   const openDialog = (code) => {
     setSelectedCode(code);

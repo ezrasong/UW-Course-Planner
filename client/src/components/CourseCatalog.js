@@ -212,6 +212,7 @@ export default function CourseCatalog({
   );
 
   const visibleCount = rows.length;
+  const totalCatalogCount = courses.length;
   const filtersActive =
     programOnly ||
     requiredOnly ||
@@ -816,6 +817,13 @@ export default function CourseCatalog({
               <Stack spacing={1.75}>
                 <Typography variant="subtitle2" color="text.secondary">
                   Catalog filters
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {filtersActive
+                    ? visibleCount === 0
+                      ? "No courses match the current filters."
+                      : `Showing ${visibleCount.toLocaleString()} of ${totalCatalogCount.toLocaleString()} courses based on the current filters.`
+                    : `Showing all ${totalCatalogCount.toLocaleString()} courses.`}
                 </Typography>
                 <TextField
                   label="Search courses"
