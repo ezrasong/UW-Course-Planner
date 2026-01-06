@@ -1,82 +1,56 @@
-:root {
-  --toolbar-height: 64px;       /* adjust if your AppBar is a different height */
-  --sidebar-width: 260px;
-  --filters-width: 280px;
-  --gutter: 16px;
-}
-
-/* AppBar navigation buttons */
-.navButtons {
-  display: flex;
-  gap: var(--gutter);
-  margin-left: 8px;
-}
-
-.navButton {
-  min-width: 140px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  text-transform: none;
-  padding: 4px 12px;
-  transition: border-color 0.2s;
-}
-
-.navButton.active {
-  border-color: rgba(255,255,255,0.7);
-}
-
-/* Floating Filters panel */
-.filtersPanel {
-  position: fixed;
-  top: calc(var(--toolbar-height) + var(--gutter));
-  left: var(--gutter);
-  width: var(--filters-width);
-  z-index: 1200; /* just below AppBar */
-}
-
-/* Main content area */
-.mainContent {
-  padding: var(--gutter);
-  margin-top: calc(var(--toolbar-height) + var(--gutter));
-  margin-left: calc(var(--filters-width) + var(--gutter));
-}
-
-/* Course grid */
-.courseGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--gutter);
-}
-
-/* Card tweaks */
-.courseCard {
-  display: flex;
-  flex-direction: column;
-  height: 360px;
+.app-shell {
   position: relative;
-  box-shadow: 0px 1px 3px rgba(0,0,0,0.2);
-  transition: box-shadow 0.2s;
+  min-height: 100vh;
 }
 
-.courseCard:hover {
-  box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+.app-shell.dark {
+  background: radial-gradient(circle at 20% 20%, rgba(103, 232, 249, 0.08), transparent 35%),
+    radial-gradient(circle at 80% 10%, rgba(192, 132, 252, 0.08), transparent 30%),
+    linear-gradient(135deg, #0b1221 0%, #0f172a 40%, #0b1221 100%);
 }
 
-.courseAccent {
-  height: 8px;
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  background-color: var(--primary-main, #1976d2); /* fallback if theme var not applied */
+.app-shell.light {
+  background: radial-gradient(circle at 18% 18%, rgba(14, 165, 233, 0.1), transparent 32%),
+    radial-gradient(circle at 78% 8%, rgba(126, 34, 206, 0.08), transparent 28%),
+    linear-gradient(135deg, #eef2ff 0%, #f8fafc 45%, #e2e8f0 100%);
 }
 
-/* Responsive adjustments */
+.ambient-blob {
+  position: fixed;
+  width: 520px;
+  height: 520px;
+  border-radius: 999px;
+  filter: blur(160px);
+  opacity: 0.5;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.blob-1 {
+  background: rgba(103, 232, 249, 0.45);
+  top: -120px;
+  left: -120px;
+}
+
+.blob-2 {
+  background: rgba(192, 132, 252, 0.35);
+  bottom: -160px;
+  right: -120px;
+}
+
+.glass-panel {
+  position: relative;
+  z-index: 1;
+  border-radius: 18px;
+  backdrop-filter: blur(18px);
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
 @media (max-width: 900px) {
-  .filtersPanel {
-    display: none;
-  }
-  .mainContent {
-    margin-left: 0;
+  .glass-panel {
+    box-shadow: none;
   }
 }

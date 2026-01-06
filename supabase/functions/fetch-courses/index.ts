@@ -2,15 +2,19 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import plan from "./comp_math_plan.json" assert { type: "json" };
 
-const supabase = createClient(
-  Deno.env.get("URL")!,
-  Deno.env.get("SERVICE_ROLE_KEY")!
-);
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  console.error("Supabase env vars are missing for fetch-courses");
+  throw new Error("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set");
+}
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const API_KEY = Deno.env.get("UW_API_KEY");
 if (!API_KEY) {
-  console.error("Missing WATERLOO_API_KEY secret");
-  throw new Error("WATERLOO_API_KEY is not set");
+  console.error("Missing UW_API_KEY secret");
+  throw new Error("UW_API_KEY is not set");
 }
 
 const relevantSubjects = new Set([
@@ -92,7 +96,7 @@ serve(async () => {
 
     const { error } = await supabase
       .from("courses")
-      .upsert(deduped, { onConflict: ["course_id", "term_code"] });
+      .upsert(deduped, { onConflict: "course_id,term_code" });
 
     if (error) {
       console.error("Upsert error:", error);
