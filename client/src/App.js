@@ -35,6 +35,7 @@ import { fetchCourses } from "./api/fetchCourses";
 import CourseCatalog from "./components/CourseCatalog";
 import Planner from "./components/Planner";
 import Login from "./components/Login";
+import defaultProgram from "./data/comp_math_plan.json";
 
 function App() {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
@@ -45,6 +46,10 @@ function App() {
   const [darkMode, setDarkMode] = useState(prefersDark);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [coursesError, setCoursesError] = useState("");
+  const [programProfile, setProgramProfile] = useState(() => ({
+    name: defaultProgram.name || "Program plan",
+    requirements: defaultProgram.requirements || [],
+  }));
 
   useEffect(() => {
     const saved = localStorage.getItem("uwcp_theme");
@@ -62,16 +67,17 @@ function App() {
       createTheme({
         palette: {
           mode: darkMode ? "dark" : "light",
-          primary: { main: darkMode ? "#67e8f9" : "#0ea5e9" },
-          secondary: { main: darkMode ? "#c084fc" : "#7c3aed" },
+          primary: { main: darkMode ? "#60a5fa" : "#2563eb" },
+          secondary: { main: darkMode ? "#22d3ee" : "#0891b2" },
           background: {
             default: darkMode ? "#0b1221" : "#f6f7fb",
             paper: darkMode ? "#0f172a" : "#ffffff",
           },
         },
-        shape: { borderRadius: 14 },
+        shape: { borderRadius: 12 },
         typography: {
-          fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
+          fontFamily:
+            '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
           h6: { fontWeight: 700 },
           button: { fontWeight: 600, textTransform: "none" },
         },
@@ -91,6 +97,25 @@ function App() {
 
   const planCodes = useMemo(
     () => new Set(plan.map((entry) => entry.course_code)),
+    [plan]
+  );
+  const requiredSet = useMemo(() => {
+    const s = new Set();
+    (programProfile.requirements || []).forEach((r) =>
+      (r.options || []).forEach((code) => s.add(code))
+    );
+    return s;
+  }, [programProfile]);
+  const requiredCovered = useMemo(() => {
+    let count = 0;
+    requiredSet.forEach((code) => {
+      if (planCodes.has(code)) count += 1;
+    });
+    return count;
+  }, [planCodes, requiredSet]);
+  const requiredTotal = requiredSet.size;
+  const completedCount = useMemo(
+    () => plan.filter((p) => p.completed).length,
     [plan]
   );
   const coursesMap = useMemo(() => {
@@ -230,6 +255,17 @@ function App() {
     return data.length;
   };
 
+  const updateProgramProfile = (profile) => {
+    if (!profile || !Array.isArray(profile.requirements)) return;
+    setProgramProfile({
+      name: profile.name || "Custom program",
+      requirements: profile.requirements.map((req) => ({
+        description: req.description || "Requirement",
+        options: (req.options || []).map((c) => String(c).replace(/\s+/g, "")),
+      })),
+    });
+  };
+
   const displayName =
     user.user_metadata?.full_name ||
     user.email
@@ -240,8 +276,9 @@ function App() {
 
   const tabSx = (viewName) => ({
     textTransform: "none",
-    px: 2.5,
-    borderRadius: 10,
+    px: 2.75,
+    py: 0.8,
+    borderRadius: 12,
     fontWeight: 700,
     bgcolor: view === viewName ? "primary.main" : "transparent",
     color: view === viewName ? "grey.900" : "common.white",
@@ -254,15 +291,13 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box className={`app-shell ${darkMode ? "dark" : "light"}`}>
-        <div className="ambient-blob blob-1" />
-        <div className="ambient-blob blob-2" />
-
         <AppBar
           position="sticky"
           elevation={0}
           sx={{
-            background: "rgba(15, 23, 42, 0.75)",
-            backdropFilter: "blur(14px)",
+            background: darkMode ? "rgba(15, 23, 42, 0.9)" : "rgba(255,255,255,0.92)",
+            color: darkMode ? "common.white" : "text.primary",
+            backdropFilter: "blur(12px)",
             borderBottom: "1px solid",
             borderColor: "divider",
           }}
@@ -274,7 +309,7 @@ function App() {
                 alt="UW"
                 sx={{ width: 40, height: 40, bgcolor: "primary.main" }}
               />
-              <Typography variant="h6" sx={{ letterSpacing: 0.4 }}>
+              <Typography variant="h6" sx={{ letterSpacing: 0.2 }}>
                 UW Course Planner
               </Typography>
               <Button sx={tabSx("catalog")} onClick={() => setView("catalog")}>
@@ -313,9 +348,80 @@ function App() {
         </AppBar>
 
         <Container maxWidth="xl" sx={{ pt: 4, pb: 6 }}>
-          <Paper elevation={0} className="glass-panel">
-            <Stack spacing={2}>
-              {coursesError && <Alert severity="error">{coursesError}</Alert>}
+          <Paper elevation={0} className="summary-panel">
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+            >
+              <Stack spacing={0.75}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Overview
+                </Typography>
+                <Typography variant="h5" fontWeight={700}>
+                  {programProfile.name || "Program plan"}
+                </Typography>
+              </Stack>
+              <Stack direction="row" spacing={1.5}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setView("catalog")}
+                  color={view === "catalog" ? "primary" : "inherit"}
+                >
+                  Catalog
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => setView("planner")}
+                  color={view === "planner" ? "primary" : "secondary"}
+                >
+                  Planner
+                </Button>
+              </Stack>
+            </Stack>
+
+            <Box className="metric-grid">
+              <MetricCard
+                label="Catalog courses"
+                value={courses.length || "…"}
+                hint="Loaded from Supabase"
+                highlight
+              />
+              <MetricCard
+                label="In planner"
+                value={plan.length}
+                hint={`${completedCount} marked complete`}
+              />
+              <MetricCard
+                label="Requirement coverage"
+                value={
+                  requiredTotal
+                    ? `${Math.round((requiredCovered / requiredTotal) * 100)}%`
+                    : "—"
+                }
+                hint={
+                  requiredTotal
+                    ? `${requiredCovered} of ${requiredTotal} required`
+                    : "Upload a program JSON"
+                }
+              />
+              <MetricCard
+                label="Program profile"
+                value={programProfile.name || "Custom"}
+                hint={`${requiredTotal || 0} requirements tracked`}
+              />
+            </Box>
+          </Paper>
+
+          {coursesError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {coursesError}
+            </Alert>
+          )}
+
+          <Paper elevation={0} className="glass-panel main-panel">
+            <Stack spacing={3}>
               {view === "catalog" ? (
                 <CourseCatalog
                   courses={courses}
@@ -324,6 +430,8 @@ function App() {
                   onAddCourse={addCourse}
                   onRemoveCourse={removeCourse}
                   onRefresh={loadCourses}
+                  programProfile={programProfile}
+                  onProgramUpload={updateProgramProfile}
                 />
               ) : (
                 <Planner
@@ -339,6 +447,37 @@ function App() {
         </Container>
       </Box>
     </ThemeProvider>
+  );
+}
+
+function MetricCard({ label, value, hint, highlight = false }) {
+  return (
+    <Paper
+      variant="outlined"
+      className="metric-card"
+      sx={{
+        borderColor: highlight ? "primary.main" : "divider",
+        backgroundColor: highlight ? "primary.main" : "background.paper",
+        color: highlight ? "grey.900" : "text.primary",
+      }}
+    >
+      <Typography
+        variant="body2"
+        color={highlight ? "grey.900" : "text.secondary"}
+      >
+        {label}
+      </Typography>
+      <Typography variant="h5" fontWeight={800} sx={{ mt: 0.5 }}>
+        {value}
+      </Typography>
+      <Typography
+        variant="caption"
+        color={highlight ? "grey.900" : "text.secondary"}
+        sx={{ mt: 0.5 }}
+      >
+        {hint}
+      </Typography>
+    </Paper>
   );
 }
 

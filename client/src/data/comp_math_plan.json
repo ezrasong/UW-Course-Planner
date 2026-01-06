@@ -1,15 +1,16 @@
 {
+  "name": "Computational Mathematics",
   "requirements": [
-    { "description": "Algebra (MATH 135)", "options": ["MATH135"] },
-    { "description": "Calculus 1 (MATH 137)", "options": ["MATH137"] },
-    { "description": "Linear Algebra 1 (MATH 136)", "options": ["MATH136"] },
-    { "description": "Calculus 2 (MATH 138)", "options": ["MATH138"] },
-    { "description": "Intro to CS 1 (CS 115 or CS 135)", "options": ["CS115", "CS135"] },
-    { "description": "Intro to CS 2 (CS 116 or CS 136)", "options": ["CS116", "CS136"] },
-    { "description": "Communication Skills (ENGL 119 or SPCOM 100)", "options": ["ENGL119", "SPCOM100"] },
-    { "description": "Probability & Statistics I (STAT 230 or STAT 240)", "options": ["STAT230", "STAT240"] },
-    { "description": "Introduction to Optimization (CO 250)", "options": ["CO250"] },
-    { "description": "Linear Algebra 2 (MATH 235)", "options": ["MATH235"] },
-    { "description": "Multivariable Calculus (MATH 237)", "options": ["MATH237"] }
+    { "description": "Algebra (MATH 135)", "options": ["MATH135"] },
+    { "description": "Calculus 1 (MATH 137)", "options": ["MATH137"] },
+    { "description": "Linear Algebra 1 (MATH 136)", "options": ["MATH136"] },
+    { "description": "Calculus 2 (MATH 138)", "options": ["MATH138"] },
+    { "description": "Intro to CS 1 (CS 115 or CS 135)", "options": ["CS115", "CS135"] },
+    { "description": "Intro to CS 2 (CS 116 or CS 136)", "options": ["CS116", "CS136"] },
+    { "description": "Communication Skills (ENGL 119 or SPCOM 100)", "options": ["ENGL119", "SPCOM100"] },
+    { "description": "Probability & Statistics I (STAT 230 or STAT 240)", "options": ["STAT230", "STAT240"] },
+    { "description": "Introduction to Optimization (CO 250)", "options": ["CO250"] },
+    { "description": "Linear Algebra 2 (MATH 235)", "options": ["MATH235"] },
+    { "description": "Multivariable Calculus (MATH 237)", "options": ["MATH237"] }
   ]
 }
