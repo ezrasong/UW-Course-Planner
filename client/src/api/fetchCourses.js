@@ -1,30 +1,7 @@
 import { supabase } from "../supabaseClient";
 
 export async function fetchCourses() {
-  const { data, error } = await supabase
-    .from("courses")
-    .select(
-      `
-        course_id,
-        subject,
-        catalog_number,
-        title,
-        description,
-        requirements_description,
-        grading_basis,
-        component_code,
-        enroll_consent_code,
-        enroll_consent_description,
-        drop_consent_code,
-        drop_consent_description,
-        is_required,
-        program_relevant,
-        term_code
-      `
-    )
-    .neq("subject", "TI")
-    .order("subject", { ascending: true })
-    .order("catalog_number", { ascending: true });
+  const { data, error } = await supabase.from("courses").select("*");
 
   if (error) {
     console.error("Supabase error fetching courses:", error);

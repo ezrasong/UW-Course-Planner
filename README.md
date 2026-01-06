@@ -37,12 +37,6 @@ UW Course Planner is a web application for University of Waterloo students to se
 
 After installation, you may need to populate the `courses` table by invoking the `fetch-courses` function. This is done automatically on Supabase start; it fetches current term courses from the UW Open Data API and upserts them into the database (using the defined program requirements).
 
-## Automated catalog refresh
-
-- The Supabase project is configured with a cron job (`supabase/config.toml`) that triggers the `fetch-courses` edge function every day at 05:30 UTC. The job calls the function with the service role key so the catalog stays synchronized without manual intervention.
-- Make sure the `SUPABASE_SERVICE_ROLE_KEY` secret is available to the project (for local development set it in your environment before running `supabase start`).
-- When you deploy the infrastructure, run `supabase cron deploy` so the scheduled job is registered with your Supabase project.
-
 ## Usage
 
 1. **Open the app:** Navigate to `http://localhost:3000` in your browser.  

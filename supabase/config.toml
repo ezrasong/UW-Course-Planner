@@ -101,14 +101,6 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
-[cron]
-enabled = true
-
-[[cron.jobs]]
-name = "refresh-courses"
-schedule = "30 5 * * *"
-command = "bash -lc 'curl --fail --silent --show-error --request POST \"$SUPABASE_URL/functions/v1/fetch-courses\" --header \"Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY\"'"
-
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
