@@ -1,12 +1,15 @@
 {
   "files": {
-    "main.js": "/UW-Course-Planner/static/js/main.77269541.js",
+    "main.css": "/UW-Course-Planner/static/css/main.51abf4ed.css",
+    "main.js": "/UW-Course-Planner/static/js/main.f5d71cda.js",
     "static/js/952.abad0bfb.chunk.js": "/UW-Course-Planner/static/js/952.abad0bfb.chunk.js",
     "index.html": "/UW-Course-Planner/index.html",
-    "main.77269541.js.map": "/UW-Course-Planner/static/js/main.77269541.js.map",
+    "main.51abf4ed.css.map": "/UW-Course-Planner/static/css/main.51abf4ed.css.map",
+    "main.f5d71cda.js.map": "/UW-Course-Planner/static/js/main.f5d71cda.js.map",
     "952.abad0bfb.chunk.js.map": "/UW-Course-Planner/static/js/952.abad0bfb.chunk.js.map"
   },
   "entrypoints": [
-    "static/js/main.77269541.js"
+    "static/css/main.51abf4ed.css",
+    "static/js/main.f5d71cda.js"
   ]
 }
